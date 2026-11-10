@@ -54,7 +54,7 @@ export const RWY_0927 = {
   width: 60,
   heading: 90,
   clWidth: 0.9,
-  clLightSpacing: 30,
+  clLightSpacing: 15,
   shoulderM: 7.5,
   pcn: "100/F/A/W/T asphalt (AIP 2017); concrete ends noted as 150/R/C/W/T or 150/R/D/W/T",
   center: { x: 0, z: 0 },
@@ -65,14 +65,15 @@ export const RWY_0927 = {
       trueHeading: 89.52,
       displaced: 142,
       sign: -1,
-      cat: "CAT I",
+      cat: "CAT II",
+      catNote: "schematic/approximate — AIP India AD 2.14 (25 MAY 2017 extract) lists RWY 09 as CAT I with a 540 m approach lighting system. This lab draws a full CAT II/III visual-aid set on both ends for teaching.",
       papiDeg: 3.0,
       papiSide: "right",
       papiMehtFt: 73.93,
       papiSitingM: 300,
       papiSitingNote: "schematic/approximate — 2017 AIP extract lists MEHT 73.93 ft and RIGHT/3.00° but not the published distance from THR 09",
-      alsM: 540,
-      tdzLightsM: 0,
+      alsM: 900,
+      tdzLightsM: 900,
       declared: { tora: 3188, toda: 3188, asda: 3188, lda: 3048 },
       publishedLengthM: 3188,
       strip: { length: 3308, width: 300 },
@@ -86,6 +87,7 @@ export const RWY_0927 = {
       displaced: 482,
       sign: 1,
       cat: "CAT II",
+      catNote: "AIP India AD 2.14 (25 MAY 2017 extract): CAT II, 900 m ALS, TDZ 900 m.",
       papiDeg: 3.0,
       papiSide: "left",
       papiMehtFt: 73.93,
@@ -104,15 +106,47 @@ export const RWY_0927 = {
 
 export const RUNWAYS = { "0927": RWY_0927 };
 
-export const TAXI_N = { z: -96, x0: -1720, x1: 1720, width: 23 };
-export const TAXI_S = { z: 96, x0: -1600, x1: 1680, width: 23 };
-export const TAXI_N1 = { x: -1280, z0: -96, z1: -30, width: 23 };
+/** Walk-mode speeds in m/s (1 unit = 1 m). Previous values were 11 / 38 (base / sprint). */
+export const WALK_SPEED = {
+  base: 30,
+  sprint: 105,
+  vertical: 33,
+  verticalSprint: 77,
+};
 
-/** Pattern A hold on N1, 75 m north of RWY 09/27 centre line (Table 3-2, code 4 CAT I). */
-export const HOLD_N1 = { x: -1280, z: -75, distFromRwyCl: 75 };
+export const TAXI_WIDTH = 23;
+/** Parallel taxiways sit outside the code-4 strip (150 m) so CAT II holds at 90 m fall on the stubs. */
+export const TAXI_N = { z: -160, x0: -1720, x1: 1720, width: TAXI_WIDTH };
+export const TAXI_S = { z: 160, x0: -1600, x1: 1680, width: TAXI_WIDTH };
 
-/** Pattern B / CAT II hold, 90 m north of RWY 09/27 (Table 3-2, code 4 CAT II/III). */
-export const HOLD_CAT2 = { x: 1180, z: -90, distFromRwyCl: 90 };
+/** Table 3-2, code 4, CAT II/III — minimum distance from runway centre line to the holding position. */
+export const HOLD_DIST_CAT2 = 90;
+
+/**
+ * Perpendicular connectors that join the parallels to RWY 09/27.
+ * `side` −1 = north (toward taxiway N), +1 = south (toward taxiway S).
+ */
+export const LINKS = [
+  { id: "N1", x: -1280, side: -1 },
+  { id: "N2", x: -400, side: -1 },
+  { id: "N3", x: 400, side: -1 },
+  { id: "N4", x: 1180, side: -1 },
+  { id: "S1", x: -1280, side: 1 },
+  { id: "S2", x: 220, side: 1 },
+  { id: "S3", x: 1180, side: 1 },
+];
+
+export function linkTaxi(link) {
+  return link.side < 0 ? TAXI_N : TAXI_S;
+}
+
+export function holdOf(link) {
+  return { id: link.id, x: link.x, z: link.side * HOLD_DIST_CAT2, distFromRwyCl: HOLD_DIST_CAT2, side: link.side };
+}
+
+export const TAXI_N1 = { x: -1280, z0: TAXI_N.z, z1: 0, width: TAXI_WIDTH };
+export const HOLD_N1 = holdOf(LINKS[0]);
+export const HOLD_CAT2 = holdOf(LINKS[3]);
 
 export function headingVec(headingDeg) {
   const h = (headingDeg * Math.PI) / 180;

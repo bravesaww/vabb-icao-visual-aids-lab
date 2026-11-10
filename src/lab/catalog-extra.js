@@ -68,9 +68,9 @@ export const EXTRA_FEATURES = [
     id: "mark.hold.patternB",
     title: "Runway-holding position Pattern B (CAT II)",
     kind: "marking",
-    location: "90 m north of RWY 09/27 centre line, east side (schematic CAT II hold for 27)",
+    location: "90 m from the RWY 09/27 centre line on every connector (N1–N4, S1–S3)",
     purpose:
-      "Pattern B is the ladder marking used where more than one runway-holding position is provided (CAT I / II / III). Pattern A remains nearest the runway; Pattern B marks the intermediate CAT II/III position.",
+      "Pattern B is the ladder marking used at a CAT II/III holding position, here paired with Pattern A at the same 90 m station (Table 3-2, code 4).",
     icao: "Annex 14 Vol I §5.2.10 / Figure 5-8 Pattern B; Table 3-2",
     dimensions: [
       { label: "Pattern", value: "B — two parallel yellow lines joined by perpendicular bars" },
@@ -95,7 +95,7 @@ export const EXTRA_FEATURES = [
       { label: "Dash / gap", value: "As shown in the Annex figure (lab uses 3 m / 3 m — schematic/approximate)" },
     ],
     notes:
-      "Annex 14 extends the marking 47 m prior to the holding position. N1 is only about 21 m from taxiway N in this schematic, so the remainder is shown along N approaching the junction (schematic layout).",
+      "Annex 14 extends the marking 47 m prior to the holding position. Each connector is long enough for the full 47 m on the stub (schematic layout).",
     footprint: { x: TAXI_N1.x, z: -85, headingDeg: 0, length: 50, width: 4 },
   },
   {
@@ -130,7 +130,7 @@ export const EXTRA_FEATURES = [
     id: "mark.taxi.edge",
     title: "Taxiway edge markings (double yellow)",
     kind: "marking",
-    location: "Along both edges of taxiways N, S and N1",
+    location: "Along both edges of taxiways N, S and the runway connectors",
     purpose:
       "A double continuous yellow line is widely used to show the taxiway edge. Annex 14 §5.2 specifies a taxiway centre line (§5.2.8) but has no separate edge-marking paragraph comparable to FAA AC 150/5340-1.",
     icao: "Not a dedicated Annex 14 §5.2 paragraph — common State practice (schematic)",
@@ -177,7 +177,7 @@ export const EXTRA_FEATURES = [
     id: "light.stopbar.n1",
     title: "Stop bar N1",
     kind: "light",
-    location: "Red in-pavement lights across N1 at the Pattern A hold",
+    location: "Red in-pavement lights across each CAT II holding position (illustrated at N1)",
     purpose:
       "A controllable red stop bar at the runway-holding position. Taxiway centre-line lights beyond the bar are extinguished while the bar is on.",
     icao: "Annex 14 Vol I §5.3.20 Stop bars (9th ed., 2022)",
@@ -186,7 +186,7 @@ export const EXTRA_FEATURES = [
       { label: "Spacing", value: "3 m across the taxiway" },
       { label: "Elevated ends", value: "Additional elevated red lights at each edge (recommended)" },
     ],
-    notes: "Shown permanently on as a teaching pattern — a real stop bar is selectable by ATC.",
+    notes: "Shown permanently on as a teaching pattern — a real stop bar is selectable by ATC. The same bar and elevated red ends are repeated at N2–N4 and S1–S3.",
     footprint: { x: HOLD_N1.x, z: HOLD_N1.z, headingDeg: 0, length: 4, width: 23 },
   },
   {

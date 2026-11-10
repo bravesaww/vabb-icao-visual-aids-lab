@@ -4,13 +4,13 @@ Educational 3D schematic of Chhatrapati Shivaji Maharaj International Airport (I
 
 **Not a photoreal digital twin. Not an AIP substitute. Not for real navigation or flight.**
 
-This is a new JavaScript project based on the earlier TypeScript [VABB Runway Lab](https://github.com/ssaiffudeen946-collab/new-visual-aids-for-nav). It keeps the same stack (TanStack Start, React 19, Tailwind v4, three.js / R3F / drei) and models a single runway — **RWY 09/27** — with a much more detailed Annex 14 / AIP catalogue and matching 3D cues.
+This is a new JavaScript project based on the earlier TypeScript [VABB Runway Lab](https://github.com/ssaiffudeen946-collab/new-visual-aids-for-nav). It keeps the same stack (TanStack Start, React 19, Tailwind v4, three.js / R3F / drei) and models a single runway — **RWY 09/27** — drawn as a CAT II precision runway (AIP 2017 lists 09 as CAT I; that upgrade is labelled schematic) with a detailed Annex 14 / AIP catalogue and matching 3D cues.
 
 ## What’s new
 
 - **Markings** — threshold stripe counts by runway width (§5.2.4), centre-line stripe/gap/width rules (§5.2.3), aiming-point Table 5-1 (400 m on every VABB end because published LDA ≥ 2 400 m), touchdown-zone pair counts and the omitted pair within 50 m of the aiming point (§5.2.6 / Figure 5-5), displaced-threshold arrows (Figure 5-4), Pattern A and Pattern B holding positions (§5.2.10 / Table 3-2), enhanced taxiway centre line (47 m, §5.2.8), mandatory instruction and information pavement markings (§5.2.16–5.2.17), intermediate holding position (§5.2.11), and a teaching blast-pad chevron pad (Chapter 7; VABB has no declared stopway/clearway in the 2017 AIP extract).
-- **Lights** — CAT I / CAT II approach systems per published length (§5.3.4), threshold and wing bars (§5.3.10), edge-light colour rules including yellow caution zone and red pre-threshold (§5.3.9), centre-line colour coding last 900 m / 300 m (§5.3.12), TDZ lights on 27 (900 m) (§5.3.13), PAPI settings ±30′ / ±10′ with AIP side, angle and MEHT (§5.3.5), REIL/RTIL (§5.3.8), stop bar (§5.3.20), runway guard lights (§5.3.23), taxiway centre-line and edge lights.
-- **Signs** — mandatory (runway designation, CAT II, NO ENTRY), location, direction, destination, runway-exit and information faces, with Table 5-5 inscription heights and Table 5-6 placement distances.
+- **Lights** — CAT II/III approach lighting (900 m barrettes, 300 m crossbar, red side rows over the inner 270 m) on both ends (§5.3.4), threshold and wing bars (§5.3.10), edge-light colour rules including yellow caution zone and red pre-threshold (§5.3.9), centre-line lights at 15 m with colour coding last 900 m / 300 m (§5.3.12), TDZ lights 900 m both ends (§5.3.13), PAPI settings ±30′ / ±10′ with AIP side, angle and MEHT (§5.3.5), REIL/RTIL (§5.3.8), stop bars and runway guard lights at CAT II holds (§5.3.20 / §5.3.23), taxiway centre-line lights alternating green/yellow inside the ILS critical area / strip (§5.3.17). A HUD **Lamps ON/OFF** switch (shortcut L) extinguishes lamps while leaving housings visible; per-system chips cover ALS, edge, CL, TDZ, PAPI, stop bars and taxiway. The Lights *layer* still hides the fixtures entirely.
+- **Signs** — mandatory CAT II holding-position signs (“09 CAT II”, “27 CAT II”, “09-27 CAT II”) paired with location signs at every hold, plus direction, destination, runway-exit and information faces, with Table 5-5 inscription heights and Table 5-6 placement distances.
 - **Physical characteristics** — RWY 09/27 dimensions, TORA/TODA/ASDA/LDA, displaced thresholds, strips, RESA, shoulders and Annex 14 slope limits. A Physical layer toggles strip and RESA overlays.
 
 ## Sources
@@ -69,7 +69,7 @@ Or run it in **GitHub Codespaces** with `npm install --legacy-peer-deps && npm r
 - **Enter airfield** — orbit camera
 - **Walk mode** — starts at RWY 09 threshold, looking east. WASD, Shift sprint, click to look, Q/E altitude, F nearest feature
 - Click any marking, light, sign or physical feature for metres + Annex 14 notes
-- **Night** — aerodrome lights
+- **Night** — aerodrome lights. **Lamps ON/OFF** (or key `L`) turns lamps on or off; the Lights layer hides the fixtures themselves
 - Catalog jump, layer toggles (Markings / Lights / Signs / Buildings / Physical)
 
 ## Lab source (the 3D app)

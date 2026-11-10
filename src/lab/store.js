@@ -1,8 +1,23 @@
 import { create } from "zustand";
+
+export const LAMP_SYSTEMS = [
+    { id: "approach", label: "ALS" },
+    { id: "edge", label: "Edge" },
+    { id: "centreLine", label: "CL" },
+    { id: "tdz", label: "TDZ" },
+    { id: "papi", label: "PAPI" },
+    { id: "stopBars", label: "Stop" },
+    { id: "taxiway", label: "Taxi" },
+];
+
+const allSystemsOn = () => Object.fromEntries(LAMP_SYSTEMS.map((s) => [s.id, true]));
+
 export const useLab = create((set) => ({
     mode: "start",
     lighting: "day",
     layers: { markings: true, lights: true, signs: true, buildings: true, physical: true },
+    lampsOn: true,
+    lampSystems: allSystemsOn(),
     selectedId: null,
     helpOpen: false,
     catalogOpen: false,
@@ -22,6 +37,14 @@ export const useLab = create((set) => ({
     })),
     setLighting: (lighting) => set({ lighting }),
     toggleLayer: (k) => set((s) => ({ layers: { ...s.layers, [k]: !s.layers[k] } })),
+    setLampsOn: (lampsOn) => set({ lampsOn }),
+    toggleLamps: () => set((s) => ({ lampsOn: !s.lampsOn })),
+    toggleLampSystem: (k) => set((s) => ({
+        lampSystems: { ...s.lampSystems, [k]: !s.lampSystems[k] },
+    })),
+    setLampSystem: (k, on) => set((s) => ({
+        lampSystems: { ...s.lampSystems, [k]: on },
+    })),
     select: (selectedId) => set({ selectedId }),
     setHelpOpen: (helpOpen) => set({ helpOpen }),
     setCatalogOpen: (catalogOpen) => set({ catalogOpen }),

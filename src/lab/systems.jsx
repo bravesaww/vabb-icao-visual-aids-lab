@@ -5,7 +5,8 @@ import * as THREE from "three";
 import { FEATURE_BY_ID, nearestFeature, pickFeature } from "./catalog";
 import { input } from "./input";
 import { useLab } from "./store";
-import { INSPECT_START, WALK_START, RWY_0927, rwyPos, headingVec, physicalAlong } from "./world";
+import { INSPECT_START, WALK_START, RWY_0927, WALK_SPEED, TAXI_N, TAXI_S, TAXI_WIDTH, LINKS, rwyPos, headingVec, physicalAlong, linkTaxi } from "./world";
+import { FILLET_R } from "./taxiways";
 export function SceneLighting() {
     const lighting = useLab((s) => s.lighting);
     const { scene } = useThree();
@@ -54,33 +55,68 @@ export function Ground() {
       <PhysicalOverlays />
     </group>);
 }
+function FilletPad({ x, z, radius, from, to }) {
+    const geo = useMemo(() => {
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.absarc(0, 0, radius, from, to, false);
+        shape.lineTo(0, 0);
+        const g = new THREE.ShapeGeometry(shape);
+        g.rotateX(-Math.PI / 2);
+        return g;
+    }, [radius, from, to]);
+    return (<mesh geometry={geo} position={[x, 0.007, z]} receiveShadow>
+      <meshLambertMaterial color="#323436"/>
+    </mesh>);
+}
+
 function Pavement() {
     const asphalt = "#2b2d2f";
-    const taxi = "#323436";
+    const taxiColor = "#323436";
+    const nLen = TAXI_N.x1 - TAXI_N.x0;
+    const sLen = TAXI_S.x1 - TAXI_S.x0;
     return (<group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[3448, 60]}/>
         <meshLambertMaterial color={asphalt}/>
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, -96]} receiveShadow>
-        <planeGeometry args={[3440, 23]}/>
-        <meshLambertMaterial color={taxi}/>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[(TAXI_N.x0 + TAXI_N.x1) / 2, 0.006, TAXI_N.z]} receiveShadow>
+        <planeGeometry args={[nLen, TAXI_N.width]}/>
+        <meshLambertMaterial color={taxiColor}/>
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[40, 0.006, 96]} receiveShadow>
-        <planeGeometry args={[3280, 23]}/>
-        <meshLambertMaterial color={taxi}/>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[(TAXI_S.x0 + TAXI_S.x1) / 2, 0.006, TAXI_S.z]} receiveShadow>
+        <planeGeometry args={[sLen, TAXI_S.width]}/>
+        <meshLambertMaterial color={taxiColor}/>
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-1280, 0.007, -63]} receiveShadow>
-        <planeGeometry args={[23, 66]}/>
-        <meshLambertMaterial color={taxi}/>
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[220, 0.004, 168]} receiveShadow>
+      {LINKS.map((link) => {
+            const taxi = linkTaxi(link);
+            const depth = Math.abs(taxi.z);
+            return (<group key={link.id}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[link.x, 0.007, taxi.z / 2]} receiveShadow>
+            <planeGeometry args={[TAXI_WIDTH, depth]}/>
+            <meshLambertMaterial color={taxiColor}/>
+          </mesh>
+          {/* Runway-edge fillets. Local +Y after rotateX(-90) is world −Z (north). */}
+          {link.side < 0 ? (<>
+            <FilletPad x={link.x - TAXI_WIDTH / 2} z={-30} radius={FILLET_R} from={Math.PI} to={Math.PI / 2}/>
+            <FilletPad x={link.x + TAXI_WIDTH / 2} z={-30} radius={FILLET_R} from={0} to={Math.PI / 2}/>
+            <FilletPad x={link.x - TAXI_WIDTH / 2} z={taxi.z + TAXI_WIDTH / 2} radius={FILLET_R} from={-Math.PI / 2} to={0}/>
+            <FilletPad x={link.x + TAXI_WIDTH / 2} z={taxi.z + TAXI_WIDTH / 2} radius={FILLET_R} from={-Math.PI / 2} to={-Math.PI}/>
+          </>) : (<>
+            <FilletPad x={link.x - TAXI_WIDTH / 2} z={30} radius={FILLET_R} from={Math.PI} to={-Math.PI / 2}/>
+            <FilletPad x={link.x + TAXI_WIDTH / 2} z={30} radius={FILLET_R} from={0} to={-Math.PI / 2}/>
+            <FilletPad x={link.x - TAXI_WIDTH / 2} z={taxi.z - TAXI_WIDTH / 2} radius={FILLET_R} from={Math.PI / 2} to={0}/>
+            <FilletPad x={link.x + TAXI_WIDTH / 2} z={taxi.z - TAXI_WIDTH / 2} radius={FILLET_R} from={Math.PI / 2} to={Math.PI}/>
+          </>)}
+        </group>);
+        })}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[220, 0.004, 230]} receiveShadow>
         <planeGeometry args={[280, 70]}/>
-        <meshLambertMaterial color={taxi}/>
+        <meshLambertMaterial color={taxiColor}/>
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-80, 0.004, -220]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-80, 0.004, -230]} receiveShadow>
         <planeGeometry args={[320, 90]}/>
-        <meshLambertMaterial color={taxi}/>
+        <meshLambertMaterial color={taxiColor}/>
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.015, 0]} receiveShadow>
         <planeGeometry args={[3448, 75]}/>
@@ -163,6 +199,25 @@ export function InspectRig() {
                     useLab.getState().focusFeature(f);
                 else
                     useLab.getState().select(id);
+            },
+            look(px, py, pz, tx = 0, ty = 0, tz = 0) {
+                camera.position.set(px, py, pz);
+                if (controls.current) {
+                    controls.current.target.set(tx, ty, tz);
+                    controls.current.update();
+                }
+                else {
+                    camera.lookAt(tx, ty, tz);
+                }
+            },
+            setLighting(mode) {
+                useLab.getState().setLighting(mode);
+            },
+            setLampsOn(on) {
+                useLab.getState().setLampsOn(on);
+            },
+            enter(mode = "inspect") {
+                useLab.getState().enter(mode);
             },
         };
         return () => {
@@ -279,7 +334,7 @@ export function WalkRig() {
         }
         const sprint = input.has("ShiftLeft") || input.has("ShiftRight");
         const crouch = input.has("KeyC");
-        const max = sprint ? 38 : 11;
+        const max = sprint ? WALK_SPEED.sprint : WALK_SPEED.base;
         let ax = 0;
         let az = 0;
         if (input.has("KeyW") || input.has("ArrowUp"))
@@ -313,7 +368,7 @@ export function WalkRig() {
         const step = (moving ? max : 0) * d;
         pos.current.x += (fx * az + rx * ax) * step;
         pos.current.z += (fz * az + rz * ax) * step;
-        pos.current.y += vy * (sprint ? 28 : 12) * d;
+        pos.current.y += vy * (sprint ? WALK_SPEED.verticalSprint : WALK_SPEED.vertical) * d;
         if (vy === 0 && pos.current.y < eye + 0.02)
             pos.current.y = eye;
         if (pos.current.y < 0.4)

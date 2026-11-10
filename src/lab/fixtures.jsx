@@ -2,7 +2,7 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLab } from "./store";
-import { TAXI_N, TAXI_S, TAXI_N1, HOLD_N1, HOLD_CAT2, RWY_0927, thresholdAlong } from "./world";
+import { TAXI_N, TAXI_S, TAXI_N1, LINKS, holdOf, RWY_0927, thresholdAlong } from "./world";
 function canvasTexture(draw, w = 512, h = 256) {
     const c = document.createElement("canvas");
     c.width = w;
@@ -23,7 +23,8 @@ function SignFace({ text, bg, fg, width = 3.2, height = 1.15, }) {
         ctx.lineWidth = 10;
         ctx.strokeRect(8, 8, w - 16, h - 16);
         ctx.fillStyle = fg;
-        ctx.font = "700 92px Barlow, sans-serif";
+        const fontPx = text.length > 11 ? 62 : text.length > 8 ? 76 : 92;
+        ctx.font = `700 ${fontPx}px Barlow, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(text, w / 2, h / 2 + 4);
@@ -46,43 +47,49 @@ export function Signs() {
     const on = useLab((s) => s.layers.signs);
     if (!on)
         return null;
+    const mandText = (link) => {
+        if (link.id === "N1" || link.id === "S1")
+            return "09 CAT II";
+        if (link.id === "N4" || link.id === "S3")
+            return "27 CAT II";
+        return "09-27 CAT II";
+    };
     return (<group>
-      <SignPost position={[HOLD_N1.x - 26, 0, HOLD_N1.z]} rotationY={0}>
-        <mesh>
-          <boxGeometry args={[3.4, 1.25, 0.12]}/>
-          <meshStandardMaterial color="#8b1e1a"/>
-        </mesh>
-        <SignFace text="09-27" bg="#9b241c" fg="#f4f1ea" width={3.2}/>
-      </SignPost>
-      <SignPost position={[HOLD_CAT2.x - 26, 0, HOLD_CAT2.z]}>
-        <mesh>
-          <boxGeometry args={[4.6, 1.25, 0.12]}/>
-          <meshStandardMaterial color="#8b1e1a"/>
-        </mesh>
-        <SignFace text="CAT II 27" bg="#9b241c" fg="#f4f1ea" width={4.4}/>
-      </SignPost>
-      <SignPost position={[620, 0, 118]} rotationY={Math.PI / 2}>
+      {LINKS.map((link) => {
+            const hold = holdOf(link);
+            const legend = mandText(link);
+            const mandW = legend.length > 10 ? 5.4 : 4.6;
+            return (<group key={link.id}>
+          <SignPost position={[hold.x - 26, 0, hold.z]}>
+            <mesh>
+              <boxGeometry args={[mandW + 0.2, 1.25, 0.12]}/>
+              <meshStandardMaterial color="#8b1e1a"/>
+            </mesh>
+            <SignFace text={legend} bg="#9b241c" fg="#f4f1ea" width={mandW}/>
+          </SignPost>
+          <SignPost position={[hold.x + 26, 0, hold.z]}>
+            <mesh>
+              <boxGeometry args={[2.6, 1.25, 0.12]}/>
+              <meshStandardMaterial color="#111"/>
+            </mesh>
+            <SignFace text={link.id} bg="#111111" fg="#e0b43a" width={2.4}/>
+          </SignPost>
+        </group>);
+        })}
+      <SignPost position={[620, 0, TAXI_S.z - 42]} rotationY={Math.PI / 2}>
         <mesh>
           <boxGeometry args={[3.8, 1.25, 0.12]}/>
           <meshStandardMaterial color="#8b1e1a"/>
         </mesh>
         <SignFace text="NO ENTRY" bg="#9b241c" fg="#f4f1ea" width={3.6}/>
       </SignPost>
-      <SignPost position={[HOLD_N1.x + 26, 0, HOLD_N1.z]}>
-        <mesh>
-          <boxGeometry args={[2.6, 1.25, 0.12]}/>
-          <meshStandardMaterial color="#111"/>
-        </mesh>
-        <SignFace text="N1" bg="#111111" fg="#e0b43a" width={2.4}/>
-      </SignPost>
-      <SignPost position={[TAXI_N1.x, 0, -112]} rotationY={Math.PI / 2}>
+      <SignPost position={[TAXI_N1.x, 0, TAXI_N.z - 16]} rotationY={Math.PI / 2}>
         <mesh>
           <boxGeometry args={[5.0, 1.25, 0.12]}/>
           <meshStandardMaterial color="#e0b43a"/>
         </mesh>
         <SignFace text="N  ←    →  E" bg="#e0b43a" fg="#111111" width={4.8}/>
       </SignPost>
-
       <SignPost position={[-1100, 0, TAXI_N.z - 26]} rotationY={Math.PI / 2}>
         <mesh>
           <boxGeometry args={[2.2, 1.25, 0.12]}/>
@@ -104,14 +111,14 @@ export function Signs() {
         </mesh>
         <SignFace text="T2  →" bg="#e0b43a" fg="#111111" width={3.6}/>
       </SignPost>
-      <SignPost position={[HOLD_N1.x + 80, 0, -42]} rotationY={Math.PI / 2}>
+      <SignPost position={[holdOf(LINKS[0]).x + 80, 0, -42]} rotationY={Math.PI / 2}>
         <mesh>
           <boxGeometry args={[3.4, 1.25, 0.12]}/>
           <meshStandardMaterial color="#e0b43a"/>
         </mesh>
         <SignFace text="N1  ←" bg="#e0b43a" fg="#111111" width={3.2}/>
       </SignPost>
-      <SignPost position={[480, 0, 150]} rotationY={Math.PI / 2}>
+      <SignPost position={[480, 0, 220]} rotationY={Math.PI / 2}>
         <mesh>
           <boxGeometry args={[3.4, 1.25, 0.12]}/>
           <meshStandardMaterial color="#e0b43a"/>
@@ -120,6 +127,7 @@ export function Signs() {
       </SignPost>
     </group>);
 }
+
 function Hangar({ x, z, w, d, h }) {
     return (<group position={[x, 0, z]}>
       <mesh position={[0, h / 2, 0]} castShadow>
@@ -268,8 +276,8 @@ export function Buildings() {
       <Hangar x={-80} z={-280} w={70} d={52} h={16}/>
       <Hangar x={20} z={-280} w={86} d={56} h={20}/>
       <Windsock />
-      <Jet position={[160, 0, 168]} headingDeg={90}/>
-      <Jet position={[220, 0, 168]} headingDeg={90}/>
-      <Jet position={[290, 0, 176]} headingDeg={78}/>
+      <Jet position={[160, 0, 230]} headingDeg={90}/>
+      <Jet position={[220, 0, 230]} headingDeg={90}/>
+      <Jet position={[290, 0, 236]} headingDeg={78}/>
     </group>);
 }

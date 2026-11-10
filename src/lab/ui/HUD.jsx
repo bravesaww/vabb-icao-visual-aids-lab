@@ -1,6 +1,7 @@
-import { BookOpen, Building2, Eye, HelpCircle, Layers, Lightbulb, Moon, PersonStanding, Ruler, Signpost, Sun, Sunset, X, } from "lucide-react";
+import { BookOpen, Building2, Eye, HelpCircle, Layers, Lightbulb, Moon, PersonStanding, Power, Ruler, Signpost, Sun, Sunset, X, } from "lucide-react";
+import { useEffect } from "react";
 import { FEATURES, FEATURE_BY_ID } from "../catalog";
-import { useLab } from "../store";
+import { LAMP_SYSTEMS, useLab } from "../store";
 import { cn } from "@/lib/utils";
 const LAYER_KEY = {
     marking: "markings",
@@ -30,7 +31,23 @@ export function HUD() {
     const selectedId = useLab((s) => s.selectedId);
     const select = useLab((s) => s.select);
     const pointerLocked = useLab((s) => s.pointerLocked);
+    const lampsOn = useLab((s) => s.lampsOn);
+    const toggleLamps = useLab((s) => s.toggleLamps);
+    const lampSystems = useLab((s) => s.lampSystems);
+    const toggleLampSystem = useLab((s) => s.toggleLampSystem);
     const selected = selectedId ? FEATURE_BY_ID.get(selectedId) : null;
+    useEffect(() => {
+        const onKey = (e) => {
+            if (e.code !== "KeyL" || e.repeat)
+                return;
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)
+                return;
+            e.preventDefault();
+            useLab.getState().toggleLamps();
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, []);
     if (mode === "start") {
         return helpOpen ? <HelpModal /> : null;
     }
@@ -50,6 +67,10 @@ export function HUD() {
             { id: "dusk", label: "Dusk", icon: Sunset },
             { id: "night", label: "Night", icon: Moon },
         ]}/>
+          <button type="button" onClick={toggleLamps} title="Toggle aerodrome lamps (L)" className={cn("flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-medium", lampsOn ? "border-amber-500/70 bg-amber-400/20 text-fg" : "border-border bg-panel/90 text-subtle")}>
+            <Power className="size-3.5"/>
+            <span className="hidden sm:inline">{lampsOn ? "Lamps ON" : "Lamps OFF"}</span>
+          </button>
         </div>
       </header>
 
@@ -112,16 +133,19 @@ export function HUD() {
               <k.icon className="size-3.5"/>
               <span className="hidden sm:inline">{k.label}</span>
             </Chip>))}
+          {LAMP_SYSTEMS.map((s) => (<Chip key={s.id} active={lampsOn && lampSystems[s.id]} onClick={() => toggleLampSystem(s.id)}>
+              {s.label}
+            </Chip>))}
           <Chip onClick={() => setHelpOpen(true)}>
             <HelpCircle className="size-3.5"/> Help
           </Chip>
         </div>
         <p className="max-w-xl font-mono text-[10px] leading-relaxed text-subtle sm:text-[11px]">
           {mode === "inspect"
-            ? "Drag orbit · scroll zoom · click a marking, light or sign"
+            ? "Drag orbit · scroll zoom · click a marking, light or sign · L lamps"
             : pointerLocked
-                ? "WASD move · Shift sprint · Q/E altitude · Space up · Ctrl down · C crouch · F nearest · Esc unlock"
-                : "Tap the airfield to look · WASD or joystick to walk · F inspect nearest"}
+                ? "WASD move · Shift sprint · Q/E altitude · Space up · Ctrl down · C crouch · F nearest · L lamps · Esc unlock"
+                : "Tap the airfield to look · WASD or joystick to walk · F inspect nearest · L lamps"}
         </p>
       </footer>
 
@@ -159,13 +183,13 @@ export function HelpModal() {
             digital twin, not an AIP substitute, and not for real flight or ground navigation.
           </p>
           <p>
-            World scale is 1 metre per unit, +Y up, −Z north. This lab models a single runway: RWY 09/27, 3448 × 60 m (CAT I on 09, CAT II on 27). Open Physical in the catalog for declared distances, strips, RESA and shoulders. PAPI colours respond to your camera elevation
-            angle: two white and two red means on slope.
+            World scale is 1 metre per unit, +Y up, −Z north. This lab models a single runway: RWY 09/27, 3448 × 60 m, drawn as a CAT II precision runway at both ends (AIP 2017 lists 09 as CAT I — that upgrade is labelled schematic). Open Physical in the catalog for declared distances, strips, RESA and shoulders. PAPI colours respond to your camera elevation
+            angle: two white and two red means on slope. The Lights layer hides fixtures; Lamps ON/OFF (shortcut L) extinguishes the lamps but leaves the housings visible.
           </p>
           <p>
             Inspect: drag to orbit, scroll to zoom, click any marking, light or sign. Walk: start at
             the RWY 09 threshold looking east. WASD move, A/D strafe, Shift sprint, mouse-look after
-            click, Q/E altitude, Space up, Ctrl down, C crouch, F inspect nearest. On a phone, use the
+            click, Q/E altitude, Space up, Ctrl down, C crouch, F inspect nearest, L toggle lamps. On a phone, use the
             left joystick and drag the right side to look.
           </p>
         </div>

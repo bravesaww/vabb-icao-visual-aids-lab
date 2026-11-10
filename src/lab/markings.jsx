@@ -1,11 +1,30 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { RWY_0927, TAXI_N, TAXI_S, TAXI_N1, HOLD_CAT2, rwyPos, rwyYaw, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, } from "./world";
+import { RWY_0927, TAXI_N, TAXI_S, TAXI_N1, TAXI_WIDTH, LINKS, rwyPos, rwyYaw, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, linkTaxi } from "./world";
+import { connectorPaths, holdZ } from "./taxiways";
 import { digitSegs, DIGIT_GAP, DIGIT_W } from "./digits";
 import { useLab } from "./store";
 function pushBox(list, rwy, along, across, alongLen, acrossW) {
     const p = rwyPos(rwy, along, across);
     list.push({ x: p.x, z: p.z, w: acrossW, d: alongLen, ry: rwyYaw(rwy) });
+}
+function paintPolyline(out, pts, width = 0.3) {
+    for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1];
+        const b = pts[i];
+        const dx = b.x - a.x;
+        const dz = b.z - a.z;
+        const len = Math.hypot(dx, dz);
+        if (len < 0.12)
+            continue;
+        out.push({
+            x: (a.x + b.x) / 2,
+            z: (a.z + b.z) / 2,
+            w: width,
+            d: len,
+            ry: Math.atan2(dx, dz),
+        });
+    }
 }
 function centreline(rwy, out) {
     const usable0 = -rwy.length / 2;
@@ -125,19 +144,21 @@ function arrows(rwy, endName, out) {
         });
     }
 }
-function holdN1(out) {
-    const zSolid1 = -75 + 1.35;
-    const zSolid2 = -75 - 0.45;
-    const zDash1 = -75 - 2.25;
-    const zDash2 = -75 - 4.05;
-    const x = TAXI_N1.x;
+function holdPatternA(out, link) {
+    const x = link.x;
+    const z = holdZ(link);
+    const towardRwy = -link.side;
     const w = 18;
-    out.push({ x, z: zSolid1, w, d: 0.9, ry: 0 });
-    out.push({ x, z: zSolid2, w, d: 0.9, ry: 0 });
+    out.push({ x, z: z + towardRwy * 1.35, w, d: 0.9, ry: 0 });
+    out.push({ x, z: z + towardRwy * 0.45, w, d: 0.9, ry: 0 });
     for (let i = -3; i <= 3; i++) {
-        out.push({ x: x + i * 2.6, z: zDash1, w: 1.4, d: 0.9, ry: 0 });
-        out.push({ x: x + i * 2.6, z: zDash2, w: 1.4, d: 0.9, ry: 0 });
+        out.push({ x: x + i * 2.6, z: z - towardRwy * 2.25, w: 1.4, d: 0.9, ry: 0 });
+        out.push({ x: x + i * 2.6, z: z - towardRwy * 4.05, w: 1.4, d: 0.9, ry: 0 });
     }
+}
+function holdAllPatternA(out) {
+    for (const link of LINKS)
+        holdPatternA(out, link);
 }
 function taxiCL(out) {
     const w = 0.3;
@@ -148,13 +169,17 @@ function taxiCL(out) {
     for (let x = TAXI_S.x0; x < TAXI_S.x1; x += step) {
         out.push({ x: x + step / 2, z: TAXI_S.z, w, d: step * 0.98, ry: Math.PI / 2 });
     }
-    for (let z = TAXI_N1.z0; z < TAXI_N1.z1; z += 8) {
-        out.push({ x: TAXI_N1.x, z: z + 4, w, d: 7.6, ry: 0 });
+    for (const link of LINKS) {
+        const paths = connectorPaths(link);
+        paintPolyline(out, paths.straight, w);
+        paintPolyline(out, paths.east, w);
+        paintPolyline(out, paths.west, w);
     }
 }
 
-function holdPatternB(out) {
-    const { x, z } = HOLD_CAT2;
+function holdPatternB(out, link) {
+    const x = link.x;
+    const z = holdZ(link) - (-link.side) * 6;
     const w = 18;
     out.push({ x, z: z - 0.45, w, d: 0.3, ry: 0 });
     out.push({ x, z: z + 0.45, w, d: 0.3, ry: 0 });
@@ -162,16 +187,24 @@ function holdPatternB(out) {
         out.push({ x: x + i * 1.4, z, w: 0.3, d: 1.2, ry: 0 });
     }
 }
+function holdAllPatternB(out) {
+    for (const link of LINKS)
+        holdPatternB(out, link);
+}
 function enhancedCL(out) {
-    const x = TAXI_N1.x;
-    for (let z = -96; z < -78; z += 6) {
-        out.push({ x: x - 0.3, z: z + 1.5, w: 0.15, d: 3, ry: 0 });
-        out.push({ x: x + 0.3, z: z + 1.5, w: 0.15, d: 3, ry: 0 });
-    }
-    for (let i = 0; i < 4; i++) {
-        const cx = x + 8 + i * 6;
-        out.push({ x: cx, z: TAXI_N.z - 0.3, w: 3, d: 0.15, ry: Math.PI / 2 });
-        out.push({ x: cx, z: TAXI_N.z + 0.3, w: 3, d: 0.15, ry: Math.PI / 2 });
+    for (const link of LINKS) {
+        const hz = holdZ(link);
+        for (let d = 3; d < 47; d += 6) {
+            const z = hz + link.side * d;
+            out.push({ x: link.x - 0.3, z, w: 0.15, d: 3, ry: 0 });
+            out.push({ x: link.x + 0.3, z, w: 0.15, d: 3, ry: 0 });
+        }
+        const taxi = linkTaxi(link);
+        for (let i = 0; i < 4; i++) {
+            const cx = link.x + 8 + i * 6;
+            out.push({ x: cx, z: taxi.z - 0.3, w: 3, d: 0.15, ry: Math.PI / 2 });
+            out.push({ x: cx, z: taxi.z + 0.3, w: 3, d: 0.15, ry: Math.PI / 2 });
+        }
     }
 }
 function blastChevrons(out) {
@@ -192,6 +225,15 @@ function taxiEdge(out) {
                 out.push({ x: x + 20, z: z - 0.15, w: 0.15, d: 39, ry: Math.PI / 2 });
                 out.push({ x: x + 20, z: z + 0.15, w: 0.15, d: 39, ry: Math.PI / 2 });
             }
+        }
+    }
+    for (const link of LINKS) {
+        const taxi = linkTaxi(link);
+        const zEnd = link.side * 28;
+        for (const side of [-1, 1]) {
+            const x = link.x + side * (TAXI_WIDTH / 2 - 0.25);
+            paintPolyline(out, [{ x: x - 0.15, z: taxi.z }, { x: x - 0.15, z: zEnd }], 0.15);
+            paintPolyline(out, [{ x: x + 0.15, z: taxi.z }, { x: x + 0.15, z: zEnd }], 0.15);
         }
     }
 }
@@ -252,8 +294,8 @@ function buildWhite() {
 }
 function buildYellow() {
     const m = [];
-    holdN1(m);
-    holdPatternB(m);
+    holdAllPatternA(m);
+    holdAllPatternB(m);
     taxiCL(m);
     enhancedCL(m);
     blastChevrons(m);
