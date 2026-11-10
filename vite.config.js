@@ -204,6 +204,20 @@ export default defineConfig(({ command, isPreview }) => ({
             "@": resolve(projectRoot, "src"),
         },
     },
+    // Nitro v3 auto-uses a root index.html as its renderer template whenever
+    // no renderer.handler is set. The standalone three.js demo used to live
+    // there and was served on production instead of the React lab. That file
+    // now lives at docs/legacy-standalone.html; this SSR entry is the
+    // official TanStack Start + Nitro server hook (see server.js).
+    environments: {
+        ssr: {
+            build: {
+                rollupOptions: {
+                    input: "./server.js",
+                },
+            },
+        },
+    },
     plugins: [
         stripRouteTreeTypesPlugin(),
         pgliteBootstrapPlugin(),

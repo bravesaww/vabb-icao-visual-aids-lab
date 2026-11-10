@@ -51,7 +51,9 @@ The project is **JavaScript** (`.js` / `.jsx`) with a `jsconfig.json` path alias
 
 ## Deploy
 
-This is a **TanStack Start** app with SSR. It will **not** run as a static GitHub Pages site.
+This is a **TanStack Start** app with SSR. Production (including Vercel) serves the same React lab as `npm run dev`. It will **not** run as a static GitHub Pages site.
+
+A legacy one-file three.js demo is kept at `docs/legacy-standalone.html` for reference only and is not part of the production build.
 
 Use **Vercel** (already configured in `vite.config.js` via the Nitro `vercel` preset):
 
