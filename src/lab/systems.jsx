@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { FEATURE_BY_ID, nearestFeature, pickFeature } from "./catalog";
 import { input } from "./input";
 import { useLab } from "./store";
-import { INSPECT_START, WALK_START, RWY_0927, WALK_SPEED, TAXI_N, TAXI_S, TAXI_WIDTH, LINKS, rwyPos, headingVec, physicalAlong, linkTaxi } from "./world";
+import { INSPECT_START, WALK_START, RWY_0927, WALK_SPEED, TAXI_N, TAXI_S, TAXI_WIDTH, LINKS, APRON_S, APRON_N, rwyPos, headingVec, physicalAlong, linkTaxi } from "./world";
 import { FILLET_R } from "./taxiways";
 export function SceneLighting() {
     const lighting = useLab((s) => s.lighting);
@@ -91,33 +91,43 @@ function Pavement() {
       {LINKS.map((link) => {
             const taxi = linkTaxi(link);
             const depth = Math.abs(taxi.z);
+            const hw = TAXI_WIDTH / 2;
+            const leads = link.leads ?? "both";
+            const westOk = leads !== "east";
+            const eastOk = leads !== "west";
             return (<group key={link.id}>
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[link.x, 0.007, taxi.z / 2]} receiveShadow>
             <planeGeometry args={[TAXI_WIDTH, depth]}/>
             <meshLambertMaterial color={taxiColor}/>
           </mesh>
-          {/* Runway-edge fillets. Local +Y after rotateX(-90) is world −Z (north). */}
+          {/* Runway-edge and parallel-junction fillets. Local +Y after rotateX(-90) is world −Z (north).
+              End connectors omit the outboard fillet so pavement stays flush with the runway end. */}
           {link.side < 0 ? (<>
-            <FilletPad x={link.x - TAXI_WIDTH / 2} z={-30} radius={FILLET_R} from={Math.PI} to={Math.PI / 2}/>
-            <FilletPad x={link.x + TAXI_WIDTH / 2} z={-30} radius={FILLET_R} from={0} to={Math.PI / 2}/>
-            <FilletPad x={link.x - TAXI_WIDTH / 2} z={taxi.z + TAXI_WIDTH / 2} radius={FILLET_R} from={-Math.PI / 2} to={0}/>
-            <FilletPad x={link.x + TAXI_WIDTH / 2} z={taxi.z + TAXI_WIDTH / 2} radius={FILLET_R} from={-Math.PI / 2} to={-Math.PI}/>
+            {westOk ? <FilletPad x={link.x - hw} z={-30} radius={FILLET_R} from={Math.PI} to={Math.PI / 2}/> : null}
+            {eastOk ? <FilletPad x={link.x + hw} z={-30} radius={FILLET_R} from={0} to={Math.PI / 2}/> : null}
+            {westOk ? <FilletPad x={link.x - hw} z={taxi.z + hw} radius={FILLET_R} from={-Math.PI / 2} to={0}/> : null}
+            {eastOk ? <FilletPad x={link.x + hw} z={taxi.z + hw} radius={FILLET_R} from={-Math.PI / 2} to={-Math.PI}/> : null}
           </>) : (<>
-            <FilletPad x={link.x - TAXI_WIDTH / 2} z={30} radius={FILLET_R} from={Math.PI} to={-Math.PI / 2}/>
-            <FilletPad x={link.x + TAXI_WIDTH / 2} z={30} radius={FILLET_R} from={0} to={-Math.PI / 2}/>
-            <FilletPad x={link.x - TAXI_WIDTH / 2} z={taxi.z - TAXI_WIDTH / 2} radius={FILLET_R} from={Math.PI / 2} to={0}/>
-            <FilletPad x={link.x + TAXI_WIDTH / 2} z={taxi.z - TAXI_WIDTH / 2} radius={FILLET_R} from={Math.PI / 2} to={Math.PI}/>
+            {westOk ? <FilletPad x={link.x - hw} z={30} radius={FILLET_R} from={Math.PI} to={-Math.PI / 2}/> : null}
+            {eastOk ? <FilletPad x={link.x + hw} z={30} radius={FILLET_R} from={0} to={-Math.PI / 2}/> : null}
+            {westOk ? <FilletPad x={link.x - hw} z={taxi.z - hw} radius={FILLET_R} from={Math.PI / 2} to={0}/> : null}
+            {eastOk ? <FilletPad x={link.x + hw} z={taxi.z - hw} radius={FILLET_R} from={Math.PI / 2} to={Math.PI}/> : null}
           </>)}
         </group>);
         })}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[220, 0.004, 230]} receiveShadow>
-        <planeGeometry args={[280, 70]}/>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[APRON_S.x, 0.005, APRON_S.z]} receiveShadow>
+        <planeGeometry args={[APRON_S.width, APRON_S.depth]}/>
         <meshLambertMaterial color={taxiColor}/>
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-80, 0.004, -230]} receiveShadow>
-        <planeGeometry args={[320, 90]}/>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[APRON_N.x, 0.005, APRON_N.z]} receiveShadow>
+        <planeGeometry args={[APRON_N.width, APRON_N.depth]}/>
         <meshLambertMaterial color={taxiColor}/>
       </mesh>
+      {/* Fillets where the wide aprons T-join the parallels. */}
+      <FilletPad x={APRON_S.x - APRON_S.width / 2} z={TAXI_S.z + TAXI_WIDTH / 2} radius={FILLET_R} from={-Math.PI / 2} to={0}/>
+      <FilletPad x={APRON_S.x + APRON_S.width / 2} z={TAXI_S.z + TAXI_WIDTH / 2} radius={FILLET_R} from={-Math.PI / 2} to={-Math.PI}/>
+      <FilletPad x={APRON_N.x - APRON_N.width / 2} z={TAXI_N.z - TAXI_WIDTH / 2} radius={FILLET_R} from={Math.PI / 2} to={0}/>
+      <FilletPad x={APRON_N.x + APRON_N.width / 2} z={TAXI_N.z - TAXI_WIDTH / 2} radius={FILLET_R} from={Math.PI / 2} to={Math.PI}/>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.015, 0]} receiveShadow>
         <planeGeometry args={[3448, 75]}/>
         <meshLambertMaterial color="#343230"/>
@@ -266,8 +276,18 @@ export function WalkRig() {
             setKeys: (codes) => input.setInjected(codes),
             getPosition: () => ({ x: pos.current.x, y: pos.current.y, z: pos.current.z }),
         };
+        window.__labWalk = {
+            set(x, y, z, yawRad, pitchRad) {
+                pos.current.set(x, y, z);
+                if (yawRad != null)
+                    yaw.current = yawRad;
+                if (pitchRad != null)
+                    pitch.current = pitchRad;
+            },
+        };
         return () => {
             delete window.__controlsTest;
+            delete window.__labWalk;
         };
     }, []);
     useEffect(() => {

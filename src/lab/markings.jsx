@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { RWY_0927, TAXI_N, TAXI_S, TAXI_N1, TAXI_WIDTH, LINKS, rwyPos, rwyYaw, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, linkTaxi } from "./world";
-import { connectorPaths, holdZ } from "./taxiways";
+import { RWY_0927, TAXI_N, TAXI_S, TAXI_N1, TAXI_WIDTH, LINKS, APRON_SPURS, rwyPos, rwyYaw, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, linkTaxi } from "./world";
+import { apronSpurPoints, connectorPaths, holdZ } from "./taxiways";
 import { digitSegs, DIGIT_GAP, DIGIT_W } from "./digits";
 import { useLab } from "./store";
 function pushBox(list, rwy, along, across, alongLen, acrossW) {
@@ -160,20 +160,27 @@ function holdAllPatternA(out) {
     for (const link of LINKS)
         holdPatternA(out, link);
 }
+function paintXRun(out, x0, x1, z, w, step = 40) {
+    for (let x = x0; x < x1; x += step) {
+        const xB = Math.min(x + step, x1);
+        const d = xB - x;
+        if (d < 0.4)
+            continue;
+        out.push({ x: (x + xB) / 2, z, w, d: d * 0.98, ry: Math.PI / 2 });
+    }
+}
 function taxiCL(out) {
     const w = 0.3;
-    const step = 40;
-    for (let x = TAXI_N.x0; x < TAXI_N.x1; x += step) {
-        out.push({ x: x + step / 2, z: TAXI_N.z, w, d: step * 0.98, ry: Math.PI / 2 });
-    }
-    for (let x = TAXI_S.x0; x < TAXI_S.x1; x += step) {
-        out.push({ x: x + step / 2, z: TAXI_S.z, w, d: step * 0.98, ry: Math.PI / 2 });
-    }
+    paintXRun(out, TAXI_N.x0, TAXI_N.x1, TAXI_N.z, w);
+    paintXRun(out, TAXI_S.x0, TAXI_S.x1, TAXI_S.z, w);
     for (const link of LINKS) {
         const paths = connectorPaths(link);
         paintPolyline(out, paths.straight, w);
         paintPolyline(out, paths.east, w);
         paintPolyline(out, paths.west, w);
+    }
+    for (const spur of APRON_SPURS) {
+        paintPolyline(out, apronSpurPoints(spur), w);
     }
 }
 
@@ -221,10 +228,8 @@ function taxiEdge(out) {
     for (const tw of [TAXI_N, TAXI_S]) {
         for (const side of [-1, 1]) {
             const z = tw.z + side * (tw.width / 2 - 0.25);
-            for (let x = tw.x0; x < tw.x1; x += 40) {
-                out.push({ x: x + 20, z: z - 0.15, w: 0.15, d: 39, ry: Math.PI / 2 });
-                out.push({ x: x + 20, z: z + 0.15, w: 0.15, d: 39, ry: Math.PI / 2 });
-            }
+            paintXRun(out, tw.x0, tw.x1, z - 0.15, 0.15);
+            paintXRun(out, tw.x0, tw.x1, z + 0.15, 0.15);
         }
     }
     for (const link of LINKS) {

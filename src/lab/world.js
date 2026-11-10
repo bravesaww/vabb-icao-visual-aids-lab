@@ -115,25 +115,36 @@ export const WALK_SPEED = {
 };
 
 export const TAXI_WIDTH = 23;
+/** Half the physical runway length — parallels run the full paved length and end at the end connectors. */
+export const RWY_HALF = RWY_0927.length / 2;
 /** Parallel taxiways sit outside the code-4 strip (150 m) so CAT II holds at 90 m fall on the stubs. */
-export const TAXI_N = { z: -160, x0: -1720, x1: 1720, width: TAXI_WIDTH };
-export const TAXI_S = { z: 160, x0: -1600, x1: 1680, width: TAXI_WIDTH };
+export const TAXI_N = { z: -160, x0: -RWY_HALF, x1: RWY_HALF, width: TAXI_WIDTH };
+export const TAXI_S = { z: 160, x0: -RWY_HALF, x1: RWY_HALF, width: TAXI_WIDTH };
 
 /** Table 3-2, code 4, CAT II/III — minimum distance from runway centre line to the holding position. */
 export const HOLD_DIST_CAT2 = 90;
 
+/** End-connector centreline so the outer face is flush with the runway / parallel end. */
+const END_WEST_X = -RWY_HALF + TAXI_WIDTH / 2;
+const END_EAST_X = RWY_HALF - TAXI_WIDTH / 2;
+
 /**
  * Perpendicular connectors that join the parallels to RWY 09/27.
  * `side` −1 = north (toward taxiway N), +1 = south (toward taxiway S).
+ * `leads` limits lead-on/off curves at the runway ends so paint stays on the paved runway.
  */
 export const LINKS = [
+  { id: "N09", x: END_WEST_X, side: -1, leads: "east" },
   { id: "N1", x: -1280, side: -1 },
   { id: "N2", x: -400, side: -1 },
   { id: "N3", x: 400, side: -1 },
   { id: "N4", x: 1180, side: -1 },
+  { id: "N27", x: END_EAST_X, side: -1, leads: "west" },
+  { id: "S09", x: END_WEST_X, side: 1, leads: "east" },
   { id: "S1", x: -1280, side: 1 },
   { id: "S2", x: 220, side: 1 },
   { id: "S3", x: 1180, side: 1 },
+  { id: "S27", x: END_EAST_X, side: 1, leads: "west" },
 ];
 
 export function linkTaxi(link) {
@@ -144,9 +155,38 @@ export function holdOf(link) {
   return { id: link.id, x: link.x, z: link.side * HOLD_DIST_CAT2, distFromRwyCl: HOLD_DIST_CAT2, side: link.side };
 }
 
+export function findLink(id) {
+  return LINKS.find((l) => l.id === id);
+}
+
+export function mandSignLegend(link) {
+  if (link.id === "N09" || link.id === "S09" || link.id === "N1" || link.id === "S1")
+    return "09 CAT II";
+  if (link.id === "N27" || link.id === "S27" || link.id === "N4" || link.id === "S3")
+    return "27 CAT II";
+  return "09-27 CAT II";
+}
+
 export const TAXI_N1 = { x: -1280, z0: TAXI_N.z, z1: 0, width: TAXI_WIDTH };
-export const HOLD_N1 = holdOf(LINKS[0]);
-export const HOLD_CAT2 = holdOf(LINKS[3]);
+export const HOLD_N1 = holdOf(findLink("N1"));
+export const HOLD_CAT2 = holdOf(findLink("N4"));
+
+/**
+ * South (T2) apron. Depth is chosen so the pad overlaps taxiway S — no grass gap.
+ * x 80–360, z 148–280.
+ */
+export const APRON_S = { id: "APN", x: 220, z: 214, width: 280, depth: 132 };
+/**
+ * North MRO / hangar pad. Overlaps taxiway N — no grass gap.
+ * x −240–80, z −277–−151.
+ */
+export const APRON_N = { id: "MRO", x: -80, z: -214, width: 320, depth: 126 };
+
+/** Centre-line spurs from the parallels into the aprons (no runway hold). */
+export const APRON_SPURS = [
+  { id: "APN", x: 220, z0: TAXI_S.z, z1: 252, side: 1 },
+  { id: "MRO", x: -80, z0: TAXI_N.z, z1: -252, side: -1 },
+];
 
 export function headingVec(headingDeg) {
   const h = (headingDeg * Math.PI) / 180;

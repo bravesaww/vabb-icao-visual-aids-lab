@@ -2,15 +2,15 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLab } from "./store";
-import { ILS_ALT_ZONE_M, connectorPaths } from "./taxiways";
-import { RWY_0927, TAXI_N, TAXI_S, LINKS, TAXI_WIDTH, holdOf, rwyPos, headingVec, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, linkTaxi } from "./world";
+import { ILS_ALT_ZONE_M, apronSpurPoints, connectorPaths } from "./taxiways";
+import { RWY_0927, TAXI_N, TAXI_S, LINKS, TAXI_WIDTH, APRON_SPURS, holdOf, rwyPos, headingVec, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, linkTaxi } from "./world";
 
 const C = {
-    white: "#f4f1ea",
-    yellow: "#e0b43a",
-    red: "#d4453a",
-    green: "#3dbe6a",
-    blue: "#3a7bd4",
+    white: "#fff8f0",
+    yellow: "#f0c040",
+    red: "#ee4a3c",
+    green: "#42d474",
+    blue: "#4a8eec",
 };
 const HOUSING = "#2a2c2e";
 
@@ -50,7 +50,7 @@ function edgeLamps(rwy, sysBuckets) {
         }
         for (const side of [-edge, edge]) {
             const p = rwyPos(rwy, along, side, 0.45);
-            push(sysBuckets, { ...p, color: col, r: 0.42, sys: "edge" });
+            push(sysBuckets, { ...p, color: col, r: 0.28, sys: "edge" });
         }
     }
 }
@@ -72,7 +72,7 @@ function clLamps(rwy, sysBuckets) {
         };
         const col = remPos <= 900 ? code(remPos) : remNeg <= 900 ? code(remNeg) : C.white;
         const p = rwyPos(rwy, along, 0, 0.06);
-        push(sysBuckets, { ...p, color: col, r: 0.26, sys: "centreLine" });
+        push(sysBuckets, { ...p, color: col, r: 0.16, sys: "centreLine" });
     }
 }
 
@@ -83,19 +83,19 @@ function thresholdBar(rwy, endName, sysBuckets) {
     for (let i = 0; i < n; i++) {
         const across = -rwy.width / 2 + 1.5 + i * 3;
         const p = rwyPos(rwy, thr, across, 0.4);
-        push(sysBuckets, { ...p, color: C.green, r: 0.34, sys: "edge" });
+        push(sysBuckets, { ...p, color: C.green, r: 0.22, sys: "edge" });
     }
     for (const side of [-1, 1]) {
         for (let k = 1; k <= 5; k++) {
             const p = rwyPos(rwy, thr, side * (rwy.width / 2 + 2 + k * 2.4), 0.4);
-            push(sysBuckets, { ...p, color: C.green, r: 0.34, sys: "edge" });
+            push(sysBuckets, { ...p, color: C.green, r: 0.22, sys: "edge" });
         }
     }
     const phys = physicalAlong(rwy, end.sign);
     for (let i = 0; i < n; i++) {
         const across = -rwy.width / 2 + 1.5 + i * 3;
         const p = rwyPos(rwy, phys, across, 0.4);
-        push(sysBuckets, { ...p, color: C.red, r: 0.34, sys: "edge" });
+        push(sysBuckets, { ...p, color: C.red, r: 0.22, sys: "edge" });
     }
 }
 
@@ -109,22 +109,22 @@ function als(rwy, endName, sysBuckets, rabbit) {
         const along = thr - ls * d;
         for (const ac of [-6, -3, 0, 3, 6]) {
             const p = rwyPos(rwy, along, ac, 0.55);
-            push(sysBuckets, { ...p, color: C.white, r: 0.32, sys: "approach" });
+            push(sysBuckets, { ...p, color: C.white, r: 0.2, sys: "approach" });
         }
         const rf = rwyPos(rwy, along, 0, 0.9);
-        rabbit.push({ ...rf, color: C.white, r: 0.4, sys: "approach" });
+        rabbit.push({ ...rf, color: C.white, r: 0.2, sys: "approach" });
         if (d <= 270) {
             for (const side of [-1, 1]) {
                 for (const k of [0, 1, 2, 3]) {
                     const p = rwyPos(rwy, along, side * (inner / 2 + 1 + k * 1.2), 0.55);
-                    push(sysBuckets, { ...p, color: C.red, r: 0.28, sys: "approach" });
+                    push(sysBuckets, { ...p, color: C.red, r: 0.18, sys: "approach" });
                 }
             }
         }
         if (d === 300) {
             for (const ac of [-18, -15, -12, -9, 9, 12, 15, 18]) {
                 const q = rwyPos(rwy, along, ac, 0.55);
-                push(sysBuckets, { ...q, color: C.white, r: 0.3, sys: "approach" });
+                push(sysBuckets, { ...q, color: C.white, r: 0.18, sys: "approach" });
             }
         }
     }
@@ -142,7 +142,7 @@ function tdzLights(rwy, endName, sysBuckets) {
         for (const side of [-1, 1]) {
             for (const k of [0, 1, 2]) {
                 const p = rwyPos(rwy, along, side * (inner / 2 + 0.6 + k * 1.4), 0.06);
-                push(sysBuckets, { ...p, color: C.white, r: 0.22, sys: "tdz" });
+                push(sysBuckets, { ...p, color: C.white, r: 0.14, sys: "tdz" });
             }
         }
     }
@@ -152,12 +152,12 @@ function stopAndGuard(sysBuckets, wig) {
     for (const link of LINKS) {
         const hold = holdOf(link);
         for (let i = -3; i <= 3; i++) {
-            push(sysBuckets, { x: hold.x + i * 3, y: 0.08, z: hold.z, color: C.red, r: 0.22, sys: "stopBars" });
+            push(sysBuckets, { x: hold.x + i * 3, y: 0.08, z: hold.z, color: C.red, r: 0.16, sys: "stopBars" });
         }
-        push(sysBuckets, { x: hold.x - 12, y: 0.7, z: hold.z, color: C.red, r: 0.32, sys: "stopBars" });
-        push(sysBuckets, { x: hold.x + 12, y: 0.7, z: hold.z, color: C.red, r: 0.32, sys: "stopBars" });
-        wig.push({ x: hold.x - 14, y: 1.2, z: hold.z, color: C.yellow, r: 0.38, sys: "stopBars" });
-        wig.push({ x: hold.x + 14, y: 1.2, z: hold.z, color: C.yellow, r: 0.38, sys: "stopBars" });
+        push(sysBuckets, { x: hold.x - 12, y: 0.7, z: hold.z, color: C.red, r: 0.22, sys: "stopBars" });
+        push(sysBuckets, { x: hold.x + 12, y: 0.7, z: hold.z, color: C.red, r: 0.22, sys: "stopBars" });
+        wig.push({ x: hold.x - 14, y: 1.2, z: hold.z, color: C.yellow, r: 0.3, sys: "stopBars" });
+        wig.push({ x: hold.x + 14, y: 1.2, z: hold.z, color: C.yellow, r: 0.3, sys: "stopBars" });
     }
 }
 
@@ -165,8 +165,8 @@ function addReil(rwy, endName, reil) {
     const p = rwyPos(rwy, thresholdAlong(rwy, endName), 0);
     const { rx, rz } = headingVec(rwy.heading);
     const off = rwy.width / 2 + 10;
-    reil.push({ x: p.x + rx * off, y: 1.6, z: p.z + rz * off, color: C.white, r: 0.5, sys: "approach" });
-    reil.push({ x: p.x - rx * off, y: 1.6, z: p.z - rz * off, color: C.white, r: 0.5, sys: "approach" });
+    reil.push({ x: p.x + rx * off, y: 1.6, z: p.z + rz * off, color: C.white, r: 0.38, sys: "approach" });
+    reil.push({ x: p.x - rx * off, y: 1.6, z: p.z - rz * off, color: C.white, r: 0.38, sys: "approach" });
 }
 
 function uniquePts(pts, eps = 1.2) {
@@ -206,11 +206,11 @@ function sampleAlong(pts, spacing) {
 function taxiLamps(sysBuckets) {
     for (const tw of [TAXI_N, TAXI_S]) {
         for (let x = tw.x0; x <= tw.x1; x += 60) {
-            push(sysBuckets, { x, y: 0.35, z: tw.z - tw.width / 2, color: C.blue, r: 0.24, sys: "taxiway" });
-            push(sysBuckets, { x, y: 0.35, z: tw.z + tw.width / 2, color: C.blue, r: 0.24, sys: "taxiway" });
+            push(sysBuckets, { x, y: 0.35, z: tw.z - tw.width / 2, color: C.blue, r: 0.16, sys: "taxiway" });
+            push(sysBuckets, { x, y: 0.35, z: tw.z + tw.width / 2, color: C.blue, r: 0.16, sys: "taxiway" });
         }
         for (let x = tw.x0; x <= tw.x1; x += 30) {
-            push(sysBuckets, { x, y: 0.06, z: tw.z, color: C.green, r: 0.2, sys: "taxiway" });
+            push(sysBuckets, { x, y: 0.06, z: tw.z, color: C.green, r: 0.12, sys: "taxiway" });
         }
     }
     for (const link of LINKS) {
@@ -220,8 +220,8 @@ function taxiLamps(sysBuckets) {
         const z0 = Math.min(zA, zB);
         const z1 = Math.max(zA, zB);
         for (let z = z0; z <= z1; z += 20) {
-            push(sysBuckets, { x: link.x - TAXI_WIDTH / 2, y: 0.35, z, color: C.blue, r: 0.24, sys: "taxiway" });
-            push(sysBuckets, { x: link.x + TAXI_WIDTH / 2, y: 0.35, z, color: C.blue, r: 0.24, sys: "taxiway" });
+            push(sysBuckets, { x: link.x - TAXI_WIDTH / 2, y: 0.35, z, color: C.blue, r: 0.16, sys: "taxiway" });
+            push(sysBuckets, { x: link.x + TAXI_WIDTH / 2, y: 0.35, z, color: C.blue, r: 0.16, sys: "taxiway" });
         }
         const paths = connectorPaths(link);
         const pts = uniquePts([
@@ -237,26 +237,39 @@ function taxiLamps(sysBuckets) {
                 col = C.green;
             if (i === inZone.length - 1)
                 col = C.yellow;
-            push(sysBuckets, { x: p.x, y: 0.06, z: p.z, color: col, r: 0.2, sys: "taxiway" });
+            push(sysBuckets, { x: p.x, y: 0.06, z: p.z, color: col, r: 0.12, sys: "taxiway" });
         });
         for (const p of outZone) {
-            push(sysBuckets, { x: p.x, y: 0.06, z: p.z, color: C.green, r: 0.2, sys: "taxiway" });
+            push(sysBuckets, { x: p.x, y: 0.06, z: p.z, color: C.green, r: 0.12, sys: "taxiway" });
+        }
+    }
+    for (const spur of APRON_SPURS) {
+        for (const pt of sampleAlong(apronSpurPoints(spur), 15)) {
+            push(sysBuckets, { x: pt.x, y: 0.06, z: pt.z, color: C.green, r: 0.12, sys: "taxiway" });
         }
     }
 }
 
 function glowScale(lighting) {
+    // Tight halo only. Distant visibility uses a modest distance scale so
+    // lamps stay small up close (walk mode) but readable from the approach.
     if (lighting === "night")
-        return { core: 2.6, glow: 9, opacity: 0.58 };
+        return { core: 1.0, glow: 1.45, opacity: 0.3, k: 0.0017, maxMul: 6 };
     if (lighting === "dusk")
-        return { core: 2.15, glow: 6.6, opacity: 0.42 };
-    return { core: 1.55, glow: 3.4, opacity: 0.24 };
+        return { core: 1.0, glow: 1.3, opacity: 0.2, k: 0.00115, maxMul: 4.5 };
+    return { core: 1.0, glow: 1.2, opacity: 0.12, k: 0.0007, maxMul: 3 };
+}
+
+function scaledRadius(baseR, mul, dist, k, maxMul) {
+    const close = baseR * mul;
+    return Math.min(close * maxMul, Math.max(close, k * dist * mul));
 }
 
 function InstancedLamps({ items, color, pulse, lit, lighting }) {
     const coreRef = useRef(null);
     const glowRef = useRef(null);
-    const geo = useMemo(() => new THREE.SphereGeometry(1, 10, 8), []);
+    const { camera } = useThree();
+    const geo = useMemo(() => new THREE.SphereGeometry(1, 8, 6), []);
     const coreMat = useMemo(() => new THREE.MeshBasicMaterial({
         color: lit ? color : HOUSING,
         toneMapped: false,
@@ -271,8 +284,9 @@ function InstancedLamps({ items, color, pulse, lit, lighting }) {
         depthWrite: false,
         fog: false,
     }), [color, lighting]);
-    const base = useMemo(() => items.map((it) => it.r ?? 0.2), [items]);
+    const base = useMemo(() => items.map((it) => it.r ?? 0.16), [items]);
     const scales = glowScale(lighting);
+    const scratch = useMemo(() => new THREE.Vector3(), []);
     useLayoutEffect(() => {
         const write = (mesh, mul) => {
             if (!mesh)
@@ -292,18 +306,24 @@ function InstancedLamps({ items, color, pulse, lit, lighting }) {
             write(glowRef.current, scales.glow);
     }, [items, base, lit, scales.core, scales.glow]);
     useFrame(({ clock }) => {
-        if (!pulse || !coreRef.current)
+        if (!coreRef.current)
             return;
         const t = clock.getElapsedTime();
         const dummy = new THREE.Object3D();
         items.forEach((it, i) => {
-            const s = pulse(t, i);
+            const dist = camera.position.distanceTo(scratch.set(it.x, it.y, it.z));
+            const flash = lit && pulse ? pulse(t, i) : 1;
             dummy.position.set(it.x, it.y, it.z);
-            dummy.scale.setScalar(base[i] * (lit ? scales.core : 0.85) * (lit ? s : 1));
+            if (lit) {
+                dummy.scale.setScalar(scaledRadius(base[i], scales.core, dist, scales.k, scales.maxMul) * flash);
+            }
+            else {
+                dummy.scale.setScalar(base[i] * 0.85);
+            }
             dummy.updateMatrix();
             coreRef.current.setMatrixAt(i, dummy.matrix);
             if (lit && glowRef.current) {
-                dummy.scale.setScalar(base[i] * scales.glow * s);
+                dummy.scale.setScalar(scaledRadius(base[i], scales.glow, dist, scales.k, scales.maxMul) * flash);
                 dummy.updateMatrix();
                 glowRef.current.setMatrixAt(i, dummy.matrix);
             }
@@ -354,12 +374,12 @@ function PapiUnit({ position, headingDeg, angleDeg, lit }) {
         <meshStandardMaterial color="#1a1c1e" roughness={0.6}/>
       </mesh>
       <mesh ref={lens} position={[0, 0.05, -0.48]} rotation={[0, Math.PI, 0]}>
-        <circleGeometry args={[0.34, 22]}/>
+        <circleGeometry args={[0.28, 20]}/>
         <meshBasicMaterial color="#e03a32" toneMapped={false} side={THREE.DoubleSide} fog={false}/>
       </mesh>
       {lit ? <mesh position={[0, 0.05, -0.5]} rotation={[0, Math.PI, 0]}>
-        <circleGeometry args={[0.7, 22]}/>
-        <meshBasicMaterial color="#ffb8a0" toneMapped={false} transparent opacity={0.28} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} fog={false}/>
+        <circleGeometry args={[0.36, 20]}/>
+        <meshBasicMaterial color="#ffd0c0" toneMapped={false} transparent opacity={0.22} blending={THREE.AdditiveBlending} depthWrite={false} side={THREE.DoubleSide} fog={false}/>
       </mesh> : null}
     </group>);
 }
@@ -420,14 +440,14 @@ export function Lights() {
       {renderGroup(built.sys.centreLine, "centreLine")}
       {renderGroup(built.sys.tdz, "tdz")}
       {renderGroup(built.sys.taxiway, "taxiway")}
-      {renderGroup(built.sys.stopBars, "stopBars", <InstancedLamps items={built.wig} color={C.yellow} lit={sysOn("stopBars")} lighting={lighting} pulse={(t, i) => (Math.sin(t * Math.PI * 3 + i * Math.PI) > 0 ? 2.15 : 0.22)}/>)}
+      {renderGroup(built.sys.stopBars, "stopBars", <InstancedLamps items={built.wig} color={C.yellow} lit={sysOn("stopBars")} lighting={lighting} pulse={(t, i) => (Math.sin(t * Math.PI * 3 + i * Math.PI) > 0 ? 1.25 : 0.22)}/>)}
       {renderGroup(built.sys.approach, "approach", <>
         <InstancedLamps items={built.rabbit} color={C.white} lit={sysOn("approach")} lighting={lighting} pulse={(t, i) => {
             const n = built.rabbit.length || 1;
             const k = Math.floor(t * 8) % n;
-            return i === n - 1 - k ? 2.6 : 0.12;
+            return i === n - 1 - k ? 1.35 : 0.2;
         }}/>
-        <InstancedLamps items={built.reil} color={C.white} lit={sysOn("approach")} lighting={lighting} pulse={(t) => (Math.sin(t * Math.PI * 2) > 0 ? 2.4 : 0.18)}/>
+        <InstancedLamps items={built.reil} color={C.white} lit={sysOn("approach")} lighting={lighting} pulse={(t) => (Math.sin(t * Math.PI * 2) > 0 ? 1.3 : 0.2)}/>
       </>)}
       <PapiRow rwy={RWY_0927} endName="09" lit={sysOn("papi")}/>
       <PapiRow rwy={RWY_0927} endName="27" lit={sysOn("papi")}/>

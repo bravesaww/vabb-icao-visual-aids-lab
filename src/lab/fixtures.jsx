@@ -2,7 +2,7 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLab } from "./store";
-import { TAXI_N, TAXI_S, TAXI_N1, LINKS, holdOf, RWY_0927, thresholdAlong } from "./world";
+import { TAXI_N, TAXI_S, TAXI_N1, LINKS, holdOf, mandSignLegend, RWY_0927, thresholdAlong } from "./world";
 function canvasTexture(draw, w = 512, h = 256) {
     const c = document.createElement("canvas");
     c.width = w;
@@ -47,17 +47,10 @@ export function Signs() {
     const on = useLab((s) => s.layers.signs);
     if (!on)
         return null;
-    const mandText = (link) => {
-        if (link.id === "N1" || link.id === "S1")
-            return "09 CAT II";
-        if (link.id === "N4" || link.id === "S3")
-            return "27 CAT II";
-        return "09-27 CAT II";
-    };
     return (<group>
       {LINKS.map((link) => {
             const hold = holdOf(link);
-            const legend = mandText(link);
+            const legend = mandSignLegend(link);
             const mandW = legend.length > 10 ? 5.4 : 4.6;
             return (<group key={link.id}>
           <SignPost position={[hold.x - 26, 0, hold.z]}>

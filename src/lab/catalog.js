@@ -209,7 +209,7 @@ export const FEATURES = [
             { label: "Gap", value: "0.90 m" },
             { label: "Distance from CL", value: "90 m (Table 3-2, code 4, CAT II or III)" },
         ],
-        notes: "The same Pattern A + Pattern B pair is painted on every connector (N1–N4, S1–S3). Table 3-2 sets 90 m as the minimum centre-line distance for a code-4 CAT II/III hold.",
+        notes: "The same Pattern A + Pattern B pair is painted on every connector, including the end links N09/S09 and N27/S27. Table 3-2 sets 90 m as the minimum centre-line distance for a code-4 CAT II/III hold.",
         footprint: { x: HOLD_N1.x, z: HOLD_N1.z, headingDeg: 0, length: 8, width: 23 },
     },
     {
@@ -224,7 +224,7 @@ export const FEATURES = [
             { label: "Width", value: "At least 0.15 m; 0.30 m where extra conspicuity is needed (lab draws 0.30 m)" },
             { label: "Taxiway width", value: "23 m (schematic)" },
         ],
-        notes: "Parallel taxiway N is joined to RWY 09/27 by perpendicular connectors N1–N4 with fillets and curved lead-on/lead-off centre lines. Layout of those stubs is schematic/approximate.",
+        notes: "Parallel taxiway N runs the full 3448 m paved length and terminates into end connectors N09 (RWY 09 physical end) and N27 (RWY 27 physical end). Midfield connectors N1–N4 plus those end links join it to the runway with fillets and curved lead-on/lead-off centre lines. A north MRO pad overlaps N (no gap). Layout of the stubs is schematic/approximate.",
         footprint: { x: 0, z: TAXI_N.z, headingDeg: 90, length: TAXI_N.x1 - TAXI_N.x0, width: 0.3 },
     },
     {
@@ -238,7 +238,7 @@ export const FEATURES = [
             { label: "Style", value: "Continuous yellow" },
             { label: "Width", value: "0.30 m" },
         ],
-        notes: "S sits between 09/27 and the T2 massing and is joined to the runway by connectors S1–S3 with the same lead-on/lead-off geometry as the north side.",
+        notes: "S runs the full paved length between 09/27 and the T2 massing, terminating into end connectors S09 and S27. Midfield connectors S1–S3 use the same lead-on/lead-off geometry as the north side. The T2 apron overlaps S so taxiway pavement is continuous into the stand area (schematic/approximate).",
         footprint: { x: 0, z: TAXI_S.z, headingDeg: 90, length: TAXI_S.x1 - TAXI_S.x0, width: 0.3 },
     },
     {
@@ -307,7 +307,7 @@ export const FEATURES = [
         id: "light.taxi.edge",
         title: "Taxiway edge lights",
         kind: "light",
-        location: "Blue lights along N, S and N1 edges",
+        location: "Blue lights along N, S and every runway connector edge",
         purpose: "Blue edge lights outline the taxiway at night.",
         icao: "Annex 14 Vol I §5.3.18 Taxiway edge lights (9th ed., 2022; some 8th-ed. prints number this §5.3.17)",
         dimensions: [

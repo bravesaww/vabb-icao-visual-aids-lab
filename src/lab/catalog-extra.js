@@ -68,7 +68,7 @@ export const EXTRA_FEATURES = [
     id: "mark.hold.patternB",
     title: "Runway-holding position Pattern B (CAT II)",
     kind: "marking",
-    location: "90 m from the RWY 09/27 centre line on every connector (N1–N4, S1–S3)",
+    location: "90 m from the RWY 09/27 centre line on every connector (N09–N27, S09–S27, including midfield links)",
     purpose:
       "Pattern B is the ladder marking used at a CAT II/III holding position, here paired with Pattern A at the same 90 m station (Table 3-2, code 4).",
     icao: "Annex 14 Vol I §5.2.10 / Figure 5-8 Pattern B; Table 3-2",

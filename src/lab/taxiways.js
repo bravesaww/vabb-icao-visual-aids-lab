@@ -28,16 +28,22 @@ export function arcPoints(cx, cz, r, theta0, theta1, stepM = 3) {
 
 export function leadArcPoints(link, R = LEAD_R) {
     const { x, side } = link;
+    const leads = link.leads ?? "both";
+    const east = [];
+    const west = [];
     if (side < 0) {
-        return {
-            east: arcPoints(x + R, -R, R, Math.PI, Math.PI / 2),
-            west: arcPoints(x - R, -R, R, 0, Math.PI / 2),
-        };
+        if (leads !== "west")
+            east.push(...arcPoints(x + R, -R, R, Math.PI, Math.PI / 2));
+        if (leads !== "east")
+            west.push(...arcPoints(x - R, -R, R, 0, Math.PI / 2));
     }
-    return {
-        east: arcPoints(x + R, R, R, Math.PI, Math.PI * 1.5),
-        west: arcPoints(x - R, R, R, 0, -Math.PI / 2),
-    };
+    else {
+        if (leads !== "west")
+            east.push(...arcPoints(x + R, R, R, Math.PI, Math.PI * 1.5));
+        if (leads !== "east")
+            west.push(...arcPoints(x - R, R, R, 0, -Math.PI / 2));
+    }
+    return { east, west };
 }
 
 export function stubStraightPoints(link, stepM = 4) {
@@ -61,6 +67,16 @@ export function connectorPaths(link) {
         east: arcs.east,
         west: arcs.west,
     };
+}
+
+export function apronSpurPoints(spur, stepM = 4) {
+    const span = spur.z1 - spur.z0;
+    const n = Math.max(2, Math.round(Math.abs(span) / stepM));
+    const pts = [];
+    for (let i = 0; i <= n; i++) {
+        pts.push({ x: spur.x, z: spur.z0 + (span * i) / n });
+    }
+    return pts;
 }
 
 export function allLinks() {
