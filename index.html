@@ -135,10 +135,7 @@ function main() {
   const RWY = {
     "0927": { id:"0927", pair:"09/27", length:3448, width:60, heading:90, cl:0.9, center:{x:0,z:0},
       ends:{ "09":{name:"09",heading:90,displaced:142,sign:-1,cat:"CAT I",papi:3.00,als:540},
-             "27":{name:"27",heading:270,displaced:482,sign:1,cat:"CAT II",papi:3.00,als:900} } },
-    "1432": { id:"1432", pair:"14/32", length:2871, width:45, heading:135, cl:0.45, center:{x:-480,z:0},
-      ends:{ "14":{name:"14",heading:135,displaced:377,sign:-1,cat:"CAT I",papi:3.00,als:740},
-             "32":{name:"32",heading:315,displaced:260,sign:1,cat:"SALS",papi:3.26,als:420} } }
+             "27":{name:"27",heading:270,displaced:482,sign:1,cat:"CAT II",papi:3.00,als:900} } }
   };
   const hdg = (deg) => {
     const h = deg * Math.PI / 180;
@@ -254,7 +251,7 @@ function main() {
       purpose: "Shows the edges of the paved runway, especially when the shoulder looks similar.",
       icao: "Annex 14 §5.2.5",
       dims: [["Width", "0.9 m"], ["Runway width", rwy.width + " m"]],
-      vabb: "Continuous edge lines on both runways in this schematic."
+      vabb: "Continuous edge lines on RWY 09/27 in this schematic."
     });
     paint(rwy, 0, edge, rwy.length - 4, 0.9, white, markings, side);
     paint(rwy, 0, -edge, rwy.length - 4, 0.9, white, markings, side);
@@ -326,7 +323,7 @@ function main() {
         purpose: "Distance coding so the pilot can see how deep into the runway they are.",
         icao: "Annex 14 §5.2.7",
         dims: [["Pairs", "3, 2, then 1"], ["Spacing", "150 m"], ["Bar", "22.5 × 3 m"]],
-        vabb: "Drawn on 09, 27 and 14. Not on the SALS end 32."
+        vabb: "Drawn on both 09 and 27 ends."
       });
       const patternN = { 150: 3, 300: 2, 450: 1, 600: 1, 750: 1, 900: 1 };
       [150, 300, 450, 600, 750, 900].forEach((dist) => {
@@ -694,40 +691,6 @@ function main() {
       vabb: "Paired with the N sign at the same junction."
     }));
 
-    const rwy = RWY["0927"];
-    for (let n = 1; n <= 10; n++) {
-      const fromEast = n * 304.8;
-      const fromWest = n * 304.8;
-      const aEast = rwy.length / 2 - fromEast;
-      const aWest = -rwy.length / 2 + fromWest;
-      const board = (along, across, idNote) => {
-        const p = pos(rwy, along, across, 0.34);
-        const c = document.createElement("canvas");
-        c.width = 256; c.height = 256;
-        const g = c.getContext("2d");
-        g.fillStyle = "#111"; g.fillRect(0, 0, 256, 256);
-        g.fillStyle = "#f4f1ea";
-        g.font = "700 180px ui-monospace, Consolas, monospace";
-        g.textAlign = "center"; g.textBaseline = "middle";
-        g.fillText(String(n), 128, 136);
-        const tex = new THREE.CanvasTexture(c);
-        tex.colorSpace = THREE.SRGBColorSpace;
-        const m = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
-        m.position.copy(p);
-        m.rotation.x = -Math.PI / 2;
-        signs.add(m);
-        tag(m, F({
-          id: "dist-" + idNote + "-" + n, title: "Distance remaining " + n,
-          layer: "signs", where: "RWY 09/27, " + n + " × 1000 ft from the far end",
-          purpose: "White numeral on a black square. Thousands of feet of runway still ahead.",
-          icao: "Annex 14 §5.2 / distance-remaining signs in §5.4 practice",
-          dims: [["Numeral", String(n)], ["Means", (n * 1000) + " ft"], ["Metres", fromEast.toFixed(0) + " m"]],
-          vabb: "Boards 10 down to 1. 1000 ft is 304.8 m. South row counts to the east end; north row counts to the west end."
-        }), p, 8, 8, 90);
-      };
-      if (Math.abs(aEast) < rwy.length / 2 - 20) board(aEast, 18, "e");
-      if (Math.abs(aWest) < rwy.length / 2 - 20) board(aWest, -18, "w");
-    }
   }
 
   function buildAirport() {
@@ -745,7 +708,7 @@ function main() {
     const shaft = addBox(buildings, 12, 58, 12, -460, 29, 150, 0x8d9390, false);
     const cab = addBox(buildings, 22, 8, 22, -460, 62, 150, 0xd5d2cb, false);
     tag(cab, F({
-      id: "twr", title: "Control tower", layer: "buildings", where: "South-west of the intersection",
+      id: "twr", title: "Control tower", layer: "buildings", where: "South of RWY 09/27",
       purpose: "Visual reference for the tower. Cab height is schematic.",
       icao: "Not a navaid.",
       dims: [["Shaft", "58 m"]],
@@ -802,31 +765,10 @@ function main() {
   placeSigns();
   buildAirport();
 
-  const gizmo = new THREE.Group();
-  scene.add(gizmo);
-  const gMat = new THREE.LineBasicMaterial({ color: 0xc4a574 });
-  function showGizmo(feat) {
-    while (gizmo.children.length) gizmo.remove(gizmo.children[0]);
-    if (!feat || !feat.pos) return;
-    const v = hdg(feat.heading || 90);
-    const L = Math.max(feat.len || 8, 4), W = Math.max(feat.wid || 4, 2);
-    const c = feat.pos.clone(); c.y = 0.55;
-    const corners = [
-      [L / 2, W / 2], [L / 2, -W / 2], [-L / 2, -W / 2], [-L / 2, W / 2], [L / 2, W / 2]
-    ].map(([al, ac]) => new THREE.Vector3(c.x + v.fx * al + v.rx * ac, c.y, c.z + v.fz * al + v.rz * ac));
-    const geo = new THREE.BufferGeometry().setFromPoints(corners);
-    gizmo.add(new THREE.Line(geo, gMat));
-    const end = corners[0].clone();
-    const lab = signPlane(Math.round(L) + " m", "#1a140c", "#c4a574", Math.min(40, Math.max(8, L * 0.15)), 3);
-    lab.position.copy(end); lab.position.y = 2.2;
-    gizmo.add(lab);
-  }
-
   const ray = new THREE.Raycaster();
   let selected = null;
   function select(feat) {
     selected = feat || null;
-    showGizmo(feat);
     const panel = document.getElementById("panel");
     if (!feat) { panel.style.display = "none"; panel.innerHTML = ""; refreshCatalog(); return; }
     panel.style.display = "block";
