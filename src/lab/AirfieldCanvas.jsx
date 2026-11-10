@@ -2,7 +2,7 @@ import { Canvas } from "@react-three/fiber";
 import { Buildings, Signs } from "./fixtures";
 import { Lights } from "./lights";
 import { Markings } from "./markings";
-import { Gizmo, Ground, InspectRig, Picker, SceneLighting, WalkRig } from "./systems";
+import { Ground, InspectRig, Picker, SceneLighting, WalkRig } from "./systems";
 import { INSPECT_START } from "./world";
 export function AirfieldCanvas() {
     return (<Canvas camera={{
@@ -31,7 +31,6 @@ export function AirfieldCanvas() {
       <Lights />
       <Signs />
       <Buildings />
-      <Gizmo />
       <InspectRig />
       <WalkRig />
       <Picker />

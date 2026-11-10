@@ -159,7 +159,7 @@ export function HelpModal() {
             digital twin, not an AIP substitute, and not for real flight or ground navigation.
           </p>
           <p>
-            World scale is 1 metre per unit, +Y up, −Z north. RWY 09/27 is 3448 × 60 m (CAT I on 09, CAT II on 27). RWY 14/32 is 2871 × 45 m. Open Physical in the catalog for declared distances, strips, RESA and shoulders. PAPI colours respond to your camera elevation
+            World scale is 1 metre per unit, +Y up, −Z north. This lab models a single runway: RWY 09/27, 3448 × 60 m (CAT I on 09, CAT II on 27). Open Physical in the catalog for declared distances, strips, RESA and shoulders. PAPI colours respond to your camera elevation
             angle: two white and two red means on slope.
           </p>
           <p>

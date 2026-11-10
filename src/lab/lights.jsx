@@ -2,7 +2,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLab } from "./store";
-import { RWY_0927, RWY_1432, TAXI_N, TAXI_S, TAXI_N1, HOLD_N1, rwyPos, headingVec, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, } from "./world";
+import { RWY_0927, TAXI_N, TAXI_S, TAXI_N1, HOLD_N1, rwyPos, headingVec, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, } from "./world";
 const C = {
     white: "#f4f1ea",
     yellow: "#e0b43a",
@@ -273,7 +273,7 @@ export function Lights() {
         const rabbit = [];
         const reil = [];
         const wig = [];
-        for (const rwy of [RWY_0927, RWY_1432]) {
+        for (const rwy of [RWY_0927]) {
             const tmp = [];
             edgeLamps(rwy, tmp);
             for (const l of tmp)
@@ -294,8 +294,6 @@ export function Lights() {
             }
         }
         tdzLights(RWY_0927, "27", white);
-        tdzLights(RWY_1432, "14", white);
-        tdzLights(RWY_1432, "32", white);
         taxiLamps(blue, green);
         stopBarN1(red);
         addReil(RWY_0927, "27", reil);
@@ -323,7 +321,5 @@ export function Lights() {
       <InstancedLamps items={built.wig} color={C.yellow} pulse={(t, i) => (Math.sin(t * Math.PI * 3 + i * Math.PI) > 0 ? 2 : 0.25)}/>
       <PapiRow rwy={RWY_0927} endName="09"/>
       <PapiRow rwy={RWY_0927} endName="27"/>
-      <PapiRow rwy={RWY_1432} endName="14"/>
-      <PapiRow rwy={RWY_1432} endName="32"/>
     </group>);
 }

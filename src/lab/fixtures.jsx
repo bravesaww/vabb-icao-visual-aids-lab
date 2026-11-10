@@ -2,7 +2,7 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLab } from "./store";
-import { TAXI_N, TAXI_S, TAXI_N1, HOLD_N1, HOLD_CAT2, RWY_0927, rwyPos, thresholdAlong } from "./world";
+import { TAXI_N, TAXI_S, TAXI_N1, HOLD_N1, HOLD_CAT2, RWY_0927, thresholdAlong } from "./world";
 function canvasTexture(draw, w = 512, h = 256) {
     const c = document.createElement("canvas");
     c.width = w;
@@ -44,15 +44,6 @@ function SignPost({ position, rotationY = 0, children, }) {
 }
 export function Signs() {
     const on = useLab((s) => s.layers.signs);
-    const dtg = useMemo(() => {
-        const items = [];
-        for (let n = 1; n <= 10; n++) {
-            const along = RWY_0927.length / 2 - n * 304.8;
-            const p = rwyPos(RWY_0927, along, -38);
-            items.push({ n, x: p.x, z: p.z });
-        }
-        return items;
-    }, []);
     if (!on)
         return null;
     return (<group>
@@ -92,13 +83,6 @@ export function Signs() {
         <SignFace text="N  ←    →  E" bg="#e0b43a" fg="#111111" width={4.8}/>
       </SignPost>
 
-      <SignPost position={[-700, 0, -118]}>
-        <mesh>
-          <boxGeometry args={[3.8, 1.25, 0.12]}/>
-          <meshStandardMaterial color="#8b1e1a"/>
-        </mesh>
-        <SignFace text="14-32" bg="#9b241c" fg="#f4f1ea" width={3.6}/>
-      </SignPost>
       <SignPost position={[-1100, 0, TAXI_N.z - 26]} rotationY={Math.PI / 2}>
         <mesh>
           <boxGeometry args={[2.2, 1.25, 0.12]}/>
@@ -134,13 +118,6 @@ export function Signs() {
         </mesh>
         <SignFace text="APN" bg="#e0b43a" fg="#111111" width={3.2}/>
       </SignPost>
-      {dtg.map((s) => (<SignPost key={s.n} position={[s.x, 0, s.z]} rotationY={Math.PI / 2}>
-          <mesh>
-            <boxGeometry args={[1.5, 1.5, 0.12]}/>
-            <meshStandardMaterial color="#111"/>
-          </mesh>
-          <SignFace text={String(s.n)} bg="#111111" fg="#f4f1ea" width={1.35} height={1.35}/>
-        </SignPost>))}
     </group>);
 }
 function Hangar({ x, z, w, d, h }) {

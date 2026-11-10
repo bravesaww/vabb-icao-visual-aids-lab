@@ -108,7 +108,7 @@
     <p class="kicker">Briefing</p>
     <h1 style="font-size:32px">How to read this field</h1>
     <p>This follows published VABB dimensions and ICAO Annex 14 Volume I (markings §5.2, lights §5.3, signs §5.4). It is a teaching schematic, not a chart, and it is not for real flight.</p>
-    <p>RWY 09/27 is 3448 × 60 m, heading 090/270. Displaced thresholds 142 m on 09 and 482 m on 27. CAT I approach on 09 (540 m), CAT II on 27 (900 m). RWY 14/32 is 2871 × 45 m, heading 135/315. Displaced 377 m on 14 and 260 m on 32. CAT I 740 m on 14, SALS 420 m on 32. PAPI 3.00° on 09, 27 and 14; 3.26° on 32.</p>
+    <p>This lab models a single runway: RWY 09/27 is 3448 × 60 m, heading 090/270. Displaced thresholds 142 m on 09 and 482 m on 27. CAT I approach on 09 (540 m), CAT II on 27 (900 m). PAPI 3.00° on both ends.</p>
     <p>1 world unit is 1 metre. +Y is up, −Z is north, +X is east. Click a marking, light or sign. In walk mode, click the picture to look, WASD to move, Shift to sprint, Q/E or Space/Ctrl for altitude, C to crouch, F for the nearest note.</p>
     <button class="btn primary" id="closeHelp" type="button">Close</button>
   </div>
@@ -798,7 +798,6 @@ function main() {
   }
 
   buildRunway(RWY["0927"]);
-  buildRunway(RWY["1432"]);
   taxi();
   placeSigns();
   buildAirport();

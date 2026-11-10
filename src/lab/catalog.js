@@ -1,4 +1,4 @@
-import { RWY_0927, RWY_1432, TAXI_N, TAXI_S, TAXI_N1, HOLD_N1, thresholdAlong, landingSign, physicalAlong, headingVec, thresholdStripeCount, aimingInnerSpacing, aimingPointFromThreshold, tdzPairCount, fp, endFp, } from "./world";
+import { RWY_0927, TAXI_N, TAXI_S, TAXI_N1, HOLD_N1, thresholdAlong, landingSign, physicalAlong, headingVec, thresholdStripeCount, aimingInnerSpacing, aimingPointFromThreshold, tdzPairCount, fp, endFp, } from "./world";
 import { EXTRA_FEATURES } from "./catalog-extra";
 function endFeatures(rwy, endName) {
     const end = rwy.ends[endName];
@@ -137,12 +137,8 @@ function endFeatures(rwy, endName) {
                 { label: "Glide path", value: `${end.papiDeg.toFixed(2)}°` },
             ],
             notes: endName === "27"
-                ? "VABB 27 is CAT II: 900 m centreline barrettes, red side row in the inner 270 m, and a sequenced flashing “rabbit” toward the threshold."
-                : endName === "09"
-                    ? "VABB 09 is CAT I with a 540 m simple approach centreline and a 300 m crossbar."
-                    : endName === "14"
-                        ? "VABB 14 uses a 740 m CAT I centreline (longer than 09 because of the approach path over the city/hills)."
-                        : "VABB 32 is a 420 m SALS — a short simple approach lighting system, matching the higher 3.26° PAPI.",
+                ? "VABB 27 is CAT II: 900 m centreline barrettes and a red side row in the inner 270 m."
+                : "VABB 09 is CAT I with a 540 m simple approach centreline and a 300 m crossbar.",
             footprint: endFp(rwy, endName, -end.alsM / 2, end.alsM, 30),
         },
         {
@@ -181,28 +177,11 @@ export const FEATURES = [
             { label: "Width", value: "0.90 m on CAT II/III runways (§5.2.3)" },
             { label: "Runway", value: "3448 × 60 m" },
         ],
-        notes: "VABB 09/27 is the primary instrument runway. Centreline width is the ICAO 0.90 m value, not the 0.45 m used on 14/32.",
+        notes: "VABB 09/27 is the primary instrument runway. Centreline width is the ICAO 0.90 m value for a CAT II/III runway.",
         footprint: fp(RWY_0927, 0, 0, 3448, 0.9),
-    },
-    {
-        id: "mark.cl.1432",
-        title: "RWY 14/32 centreline",
-        kind: "marking",
-        location: "Full usable length of RWY 14/32",
-        purpose: "Same function as 09/27, on the crossing runway.",
-        icao: "Annex 14 Vol I §5.2.3 Runway centre line marking",
-        dimensions: [
-            { label: "Stripe / gap", value: "30 m / 20 m" },
-            { label: "Width", value: "0.45 m" },
-            { label: "Runway", value: "2871 × 45 m" },
-        ],
-        notes: "45 m pavement uses the narrower 0.45 m centreline. Heading ~135/315 true.",
-        footprint: fp(RWY_1432, 0, 0, 2871, 0.45),
     },
     ...endFeatures(RWY_0927, "09"),
     ...endFeatures(RWY_0927, "27"),
-    ...endFeatures(RWY_1432, "14"),
-    ...endFeatures(RWY_1432, "32"),
     {
         id: "mark.side.0927",
         title: "RWY 09/27 side stripes",
@@ -217,20 +196,6 @@ export const FEATURES = [
         ],
         notes: "Continuous white. The displaced sections keep side stripes — only landing is restricted, not pavement width.",
         footprint: fp(RWY_0927, 0, 0, 3448, 60),
-    },
-    {
-        id: "mark.side.1432",
-        title: "RWY 14/32 side stripes",
-        kind: "marking",
-        location: "Both edges of RWY 14/32",
-        purpose: "Edge of the 45 m crossing runway.",
-        icao: "Annex 14 Vol I §5.2.7 Runway side stripe marking",
-        dimensions: [
-            { label: "Width", value: "0.90 m" },
-            { label: "Runway width", value: "45 m" },
-        ],
-        notes: "Same 0.90 m stripe on a narrower runway — the inner face of the stripe sits 0.45 m in from each edge.",
-        footprint: fp(RWY_1432, 0, 0, 2871, 45),
     },
     {
         id: "mark.hold.n1",
@@ -291,20 +256,6 @@ export const FEATURES = [
         ],
         notes: "Bidirectional runway: both ends show a 600 m yellow caution zone. Elevated lights, schematic 0.4 m high.",
         footprint: fp(RWY_0927, 0, 0, 3448, 60),
-    },
-    {
-        id: "light.edge.1432",
-        title: "RWY 14/32 edge lights",
-        kind: "light",
-        location: "Both edges of the crossing runway, 60 m spacing",
-        purpose: "Same edge-light rule on 14/32, including yellow caution ends.",
-        icao: "Annex 14 Vol I §5.3.9 Runway edge lights",
-        dimensions: [
-            { label: "Spacing", value: "60 m" },
-            { label: "Colour", value: "White; yellow last 600 m" },
-        ],
-        notes: "45 m runway — edge lights sit on the 0.90 m side stripe.",
-        footprint: fp(RWY_1432, 0, 0, 2871, 45),
     },
     {
         id: "light.cl.0927",
@@ -465,21 +416,6 @@ export const FEATURES = [
         footprint: { x: TAXI_N1.x, z: TAXI_N.z - 16, headingDeg: 90, length: 1.2, width: 4.8 },
     },
     {
-        id: "sign.dtg.0927",
-        title: "Distance-remaining markers 09/27",
-        kind: "sign",
-        location: "Every 1000 ft along RWY 09/27, white on black",
-        purpose: "Runway distance-remaining (typically FAA-style) in thousands of feet, so a departing crew can judge accelerate-stop / remaining TODA at a glance.",
-        icao: "Annex 14 Vol I §5.4.7 Information signs (distance-to-go is a commonly provided supplement)",
-        dimensions: [
-            { label: "Numerals", value: "10 … 1" },
-            { label: "Interval", value: "1000 ft (304.8 m)" },
-            { label: "Face", value: "White on black" },
-        ],
-        notes: "VABB 09/27 is 3448 m ≈ 11 312 ft, so markers 10 through 1 fit. This lab places them on the north shoulder for the 09 take-off direction.",
-        footprint: fp(RWY_0927, 0, -38, 3448, 2),
-    },
-    {
         id: "bldg.t2",
         title: "Terminal 2 massing",
         kind: "building",
@@ -498,7 +434,7 @@ export const FEATURES = [
         title: "Control tower",
         kind: "building",
         location: "South-west of T2 apron, overlooking both runways",
-        purpose: "Visual control room with a view of 09/27 and 14/32.",
+        purpose: "Visual control room with a view of RWY 09/27.",
         icao: "Annex 14 Vol I §1.4 / tower siting (operational, not a marking)",
         dimensions: [
             { label: "Cab height (schematic)", value: "~65 m" },

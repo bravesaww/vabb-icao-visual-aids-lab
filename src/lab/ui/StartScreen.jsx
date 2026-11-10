@@ -33,7 +33,6 @@ export function StartScreen() {
 function Schematic({ className }) {
     return (<svg viewBox="0 0 480 120" className={className} aria-hidden="true">
       <rect x="20" y="52" width="440" height="10" fill="currentColor" opacity="0.85"/>
-      <rect x="168" y="8" width="300" height="8" fill="currentColor" opacity="0.7" transform="rotate(45 180 60)"/>
       <rect x="20" y="40" width="440" height="1.2" fill="currentColor" opacity="0.25"/>
       <rect x="20" y="72" width="440" height="1.2" fill="currentColor" opacity="0.25"/>
       <circle cx="48" cy="57" r="3" fill="currentColor"/>
@@ -42,12 +41,6 @@ function Schematic({ className }) {
       </text>
       <text x="430" y="44" fill="currentColor" fontSize="9" fontFamily="IBM Plex Mono, monospace">
         27
-      </text>
-      <text x="150" y="18" fill="currentColor" fontSize="9" fontFamily="IBM Plex Mono, monospace">
-        14
-      </text>
-      <text x="330" y="112" fill="currentColor" fontSize="9" fontFamily="IBM Plex Mono, monospace">
-        32
       </text>
     </svg>);
 }

@@ -1,11 +1,11 @@
-import { Html, Line, OrbitControls } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { FEATURE_BY_ID, nearestFeature, pickFeature } from "./catalog";
 import { input } from "./input";
 import { useLab } from "./store";
-import { INSPECT_START, WALK_START, RWY_0927, RWY_1432, rwyPos, headingVec, physicalAlong } from "./world";
+import { INSPECT_START, WALK_START, RWY_0927, rwyPos, headingVec, physicalAlong } from "./world";
 export function SceneLighting() {
     const lighting = useLab((s) => s.lighting);
     const { scene } = useThree();
@@ -62,10 +62,6 @@ function Pavement() {
         <planeGeometry args={[3448, 60]}/>
         <meshLambertMaterial color={asphalt}/>
       </mesh>
-      <mesh position={[-480, -0.01, 0]} rotation={[0, Math.PI / 4, 0]} receiveShadow>
-        <boxGeometry args={[2871, 0.05, 45]}/>
-        <meshLambertMaterial color={asphalt}/>
-      </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, -96]} receiveShadow>
         <planeGeometry args={[3440, 23]}/>
         <meshLambertMaterial color={taxi}/>
@@ -88,10 +84,6 @@ function Pavement() {
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.015, 0]} receiveShadow>
         <planeGeometry args={[3448, 75]}/>
-        <meshLambertMaterial color="#343230"/>
-      </mesh>
-      <mesh position={[-480, -0.018, 0]} rotation={[0, Math.PI / 4, 0]} receiveShadow>
-        <boxGeometry args={[2871, 0.04, 75]}/>
         <meshLambertMaterial color="#343230"/>
       </mesh>
     </group>);
@@ -118,14 +110,8 @@ function PhysicalOverlays() {
           <planeGeometry args={[3568, 300]}/>
           <meshLambertMaterial color="#3d4a32" transparent opacity={0.28}/>
         </mesh>
-        <mesh position={[-480, -0.032, 0]} rotation={[0, Math.PI / 4, 0]}>
-          <boxGeometry args={[2991, 0.02, 300]}/>
-          <meshLambertMaterial color="#3d4a32" transparent opacity={0.22}/>
-        </mesh>
         <ResaBox rwy={RWY_0927} endName="09"/>
         <ResaBox rwy={RWY_0927} endName="27"/>
-        <ResaBox rwy={RWY_1432} endName="14"/>
-        <ResaBox rwy={RWY_1432} endName="32"/>
       </group>
     );
 }
@@ -152,6 +138,37 @@ export function InspectRig() {
         camera.position.set(fp.x + dist * 0.35, dist * 0.55, fp.z + dist * 0.7);
         controls.current.update();
     }, [focusToken, mode, selectedId, camera]);
+    useEffect(() => {
+        window.__labShot = {
+            top(x = 40, z = 8, height = 2400) {
+                camera.position.set(x, height, z);
+                if (controls.current) {
+                    controls.current.target.set(x, 0, 0);
+                    controls.current.update();
+                }
+                else {
+                    camera.lookAt(x, 0, 0);
+                }
+            },
+            orbit() {
+                camera.position.set(...INSPECT_START.position);
+                if (controls.current) {
+                    controls.current.target.set(...INSPECT_START.target);
+                    controls.current.update();
+                }
+            },
+            select(id) {
+                const f = FEATURE_BY_ID.get(id);
+                if (f)
+                    useLab.getState().focusFeature(f);
+                else
+                    useLab.getState().select(id);
+            },
+        };
+        return () => {
+            delete window.__labShot;
+        };
+    }, [camera]);
     return (<OrbitControls ref={controls} enabled={mode === "inspect"} enableDamping dampingFactor={0.08} minDistance={6} maxDistance={4200} maxPolarAngle={Math.PI / 2 - 0.03} makeDefault={mode === "inspect"}/>);
 }
 export function WalkRig() {
@@ -345,59 +362,4 @@ export function Picker() {
         };
     }, [camera, gl, layers, mode, select]);
     return null;
-}
-export function Gizmo() {
-    const selectedId = useLab((s) => s.selectedId);
-    const f = selectedId ? FEATURE_BY_ID.get(selectedId) : null;
-    const pts = useMemo(() => {
-        if (!f)
-            return null;
-        const r = f.footprint;
-        const h = (r.headingDeg * Math.PI) / 180;
-        const fx = Math.sin(h);
-        const fz = -Math.cos(h);
-        const rx = Math.cos(h);
-        const rz = Math.sin(h);
-        const hl = r.length / 2;
-        const hw = r.width / 2;
-        const corner = (a, b) => [
-            r.x + fx * a + rx * b,
-            0.12,
-            r.z + fz * a + rz * b,
-        ];
-        return {
-            rect: [corner(-hl, -hw), corner(hl, -hw), corner(hl, hw), corner(-hl, hw), corner(-hl, -hw)],
-            lenA: corner(-hl, -hw - 4),
-            lenB: corner(hl, -hw - 4),
-            widA: corner(-hl - 4, -hw),
-            widB: corner(-hl - 4, hw),
-            lenMid: corner(0, -hw - 4),
-            widMid: corner(-hl - 4, 0),
-            len: r.length,
-            wid: r.width,
-        };
-    }, [f]);
-    if (!f || !pts)
-        return null;
-    const yaw = -(f.footprint.headingDeg * Math.PI) / 180 + Math.PI / 2;
-    return (<group>
-      <Line points={pts.rect} color="#f4f1ea" lineWidth={1.5}/>
-      <mesh position={[f.footprint.x, 0.09, f.footprint.z]} rotation={[0, yaw, 0]}>
-        <boxGeometry args={[Math.max(f.footprint.width, 2), 0.02, Math.max(f.footprint.length, 2)]}/>
-        <meshBasicMaterial color="#f4f1ea" transparent opacity={0.12} depthWrite={false}/>
-      </mesh>
-      <Html position={pts.lenMid} center sprite distanceFactor={80} style={{ pointerEvents: "none" }}>
-        <div className="rounded-sm border border-border bg-panel/90 px-2 py-0.5 font-mono text-[11px] text-fg whitespace-nowrap">
-          {fmt(pts.len)} m
-        </div>
-      </Html>
-      <Html position={pts.widMid} center sprite distanceFactor={80} style={{ pointerEvents: "none" }}>
-        <div className="rounded-sm border border-border bg-panel/90 px-2 py-0.5 font-mono text-[11px] text-fg whitespace-nowrap">
-          {fmt(pts.wid)} m
-        </div>
-      </Html>
-    </group>);
-}
-function fmt(n) {
-    return n >= 100 ? n.toFixed(0) : n.toFixed(2).replace(/\.?0+$/, "");
 }

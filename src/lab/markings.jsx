@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { RWY_0927, RWY_1432, TAXI_N, TAXI_S, TAXI_N1, HOLD_CAT2, rwyPos, rwyYaw, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, } from "./world";
+import { RWY_0927, TAXI_N, TAXI_S, TAXI_N1, HOLD_CAT2, rwyPos, rwyYaw, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, } from "./world";
 import { digitSegs, DIGIT_GAP, DIGIT_W } from "./digits";
 import { useLab } from "./store";
 function pushBox(list, rwy, along, across, alongLen, acrossW) {
@@ -237,7 +237,7 @@ function buildWhite() {
     const m = [];
     const redDummy = [];
     mandatoryPaint(redDummy, m);
-    for (const rwy of [RWY_0927, RWY_1432]) {
+    for (const rwy of [RWY_0927]) {
         centreline(rwy, m);
         sideStripes(rwy, m);
         for (const name of Object.keys(rwy.ends)) {

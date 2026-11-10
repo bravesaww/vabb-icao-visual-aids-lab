@@ -102,64 +102,7 @@ export const RWY_0927 = {
   },
 };
 
-export const RWY_1432 = {
-  id: "1432",
-  pair: "14/32",
-  length: 2871,
-  width: 45,
-  heading: 135,
-  clWidth: 0.45,
-  clLightSpacing: 15,
-  shoulderM: 15,
-  pcn: "100/F/A/W/T asphalt (AIP 2017)",
-  center: { x: -480, z: 0 },
-  ends: {
-    "14": {
-      name: "14",
-      heading: 135,
-      trueHeading: 134.52,
-      displaced: 377,
-      sign: -1,
-      cat: "CAT I",
-      papiDeg: 3.0,
-      papiSide: "left",
-      papiMehtFt: 64.17,
-      papiSitingM: 410,
-      papiSitingNote: "AIP India AD 2.14 (2017 extract): 410 m from THR 14",
-      alsM: 740,
-      tdzLightsM: 740,
-      declared: { tora: 2871, toda: 2871, asda: 2871, lda: 2471 },
-      publishedLengthM: 2871,
-      strip: { length: 2991, width: 300 },
-      stripNote: "schematic/computed — strip length = 2871 + 60 m + 60 m (§3.4.2 code 3/4); width 300 m for a precision-approach code 3/4 strip (§3.4.3). Not quoted for 14/32 in the 2017 extract.",
-      resa: { length: 90, width: 90 },
-      preThrEdgeRedM: 400,
-    },
-    "32": {
-      name: "32",
-      heading: 315,
-      trueHeading: 314.52,
-      displaced: 260,
-      sign: 1,
-      cat: "SALS",
-      papiDeg: 3.0,
-      papiSide: "left",
-      papiMehtFt: 64.07,
-      papiSitingM: 414,
-      papiSitingNote: "AIP India AD 2.14 (2017 extract): 414 m from THR 32. Original lab schematic used 3.26°; AIP lists LEFT/3.00°.",
-      alsM: 420,
-      tdzLightsM: 420,
-      declared: { tora: 2871, toda: 2871, asda: 2871, lda: 2673 },
-      publishedLengthM: 2871,
-      strip: { length: 2991, width: 150 },
-      stripNote: "schematic/computed — SALS is a simple approach lighting system (typically non-precision). Strip width 150 m (75 m each side) for a code 3/4 non-precision runway (§3.4.3); length 2871 + 120 m. Not quoted in the 2017 extract.",
-      resa: { length: 150, width: 100 },
-      preThrEdgeRedM: 198,
-    },
-  },
-};
-
-export const RUNWAYS = { "0927": RWY_0927, "1432": RWY_1432 };
+export const RUNWAYS = { "0927": RWY_0927 };
 
 export const TAXI_N = { z: -96, x0: -1720, x1: 1720, width: 23 };
 export const TAXI_S = { z: 96, x0: -1600, x1: 1680, width: 23 };
@@ -209,8 +152,11 @@ export function landingSign(end) {
 }
 
 export function endOf(name) {
-  const rwy = name === "09" || name === "27" ? RWY_0927 : RWY_1432;
-  return { rwy, end: rwy.ends[name] };
+  const end = RWY_0927.ends[name];
+  if (!end) {
+    throw new Error(`Unknown runway end: ${name}`);
+  }
+  return { rwy: RWY_0927, end };
 }
 
 export function thresholdWorld(name, across = 0, y = 0) {

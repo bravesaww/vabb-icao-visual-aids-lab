@@ -1,6 +1,5 @@
 import {
   RWY_0927,
-  RWY_1432,
   TAXI_N,
   TAXI_S,
   TAXI_N1,
@@ -31,11 +30,7 @@ function declared(rwy, endName) {
       { label: "Published length this direction (AIP AD 2.12 note)", value: `${end.publishedLengthM} m × ${rwy.width} m` },
     ],
     notes:
-      endName === "14"
-        ? `Lab displacement ${end.displaced} m was kept from the original project. AIP LDA ${d.lda} m implies a ${rwy.length - d.lda} m reduction (~400 m). Both figures are shown; confirm the current eAIP.`
-        : endName === "32"
-          ? `Lab displacement ${end.displaced} m was kept from the original project. AIP LDA ${d.lda} m implies a ${rwy.length - d.lda} m reduction (~198 m). Both figures are shown; confirm the current eAIP.`
-          : `LDA ${d.lda} m versus physical length ${rwy.length} m minus ${end.displaced} m displacement is consistent with the 2017 AIP extract (1–2 m rounding).`,
+      `LDA ${d.lda} m versus physical length ${rwy.length} m minus ${end.displaced} m displacement is consistent with the 2017 AIP extract (1–2 m rounding).`,
     footprint: endFp(rwy, endName, (rwy.length - end.displaced) / 2, Math.min(d.lda, rwy.length), rwy.width),
   };
 }
@@ -179,52 +174,6 @@ export const EXTRA_FEATURES = [
     footprint: fp(RWY_0927, -(3448 / 2) - 40, 0, 80, 60),
   },
   {
-    id: "light.cl.1432",
-    title: "RWY 14/32 centre line lights",
-    kind: "light",
-    location: "Inset on 14/32 centre line, 15 m spacing",
-    purpose: "Same §5.3.12 colour coding on the crossing runway: white, then alternate red/white for the last 900–300 m, then red.",
-    icao: "Annex 14 Vol I §5.3.12 Runway centre line lights",
-    dimensions: [
-      { label: "Spacing", value: "15 m (AIP AD 2.14, 2017 extract)" },
-      { label: "Colour coding", value: "White / alternate red-white last 900–300 m / red last 300 m" },
-      { label: "Intensity", value: "LIH" },
-    ],
-    notes: "The original lab omitted these lights; they are published for 14/32 and are shown here.",
-    footprint: fp(RWY_1432, 0, 0, 2871, 1),
-  },
-  {
-    id: "light.tdz.14",
-    title: "Touchdown-zone lights RWY 14",
-    kind: "light",
-    location: "First 740 m of RWY 14",
-    purpose: "White inset TDZ barrettes on the CAT I 14 end, as published.",
-    icao: "Annex 14 Vol I §5.3.13 Runway touchdown zone lights",
-    dimensions: [
-      { label: "Published length", value: "740 m (AIP AD 2.14, 2017 extract)" },
-      { label: "Colour", value: "Variable white" },
-      { label: "Barrette length", value: "3–4.5 m, at least 3 lights spaced ≤ 1.5 m" },
-      { label: "Lateral spacing", value: "Matches aiming-point inner spacing (18 m on this 45 m runway)" },
-    ],
-    notes: "Annex 14 requires TDZ lights on CAT II/III. VABB also publishes 740 m on 14.",
-    footprint: endFp(RWY_1432, "14", 370, 740, 36),
-  },
-  {
-    id: "light.tdz.32",
-    title: "Touchdown-zone lights RWY 32",
-    kind: "light",
-    location: "First 420 m of RWY 32",
-    purpose: "White inset TDZ barrettes matching the published 420 m system.",
-    icao: "Annex 14 Vol I §5.3.13 Runway touchdown zone lights",
-    dimensions: [
-      { label: "Published length", value: "420 m (AIP AD 2.14, 2017 extract)" },
-      { label: "Colour", value: "Variable white" },
-      { label: "Lateral spacing", value: "18 m (45 m runway)" },
-    ],
-    notes: "Shorter than the 900 m CAT II pattern. Shown as published rather than extended to 900 m.",
-    footprint: endFp(RWY_1432, "32", 210, 420, 36),
-  },
-  {
     id: "light.stopbar.n1",
     title: "Stop bar N1",
     kind: "light",
@@ -254,21 +203,6 @@ export const EXTRA_FEATURES = [
     notes:
       "The 2017 AIP AD 2.14 extract does not explicitly list RTIL/REIL. airport-data.com lists REIL on 09/27. Treat presence at VABB as unconfirmed against the current eAIP.",
     footprint: endFp(RWY_0927, "09", 0, 8, 90),
-  },
-  {
-    id: "sign.mand.1432",
-    title: "Mandatory sign 14-32",
-    kind: "sign",
-    location: "Schematic hold on the north parallel facing the crossing runway",
-    purpose: "Mandatory runway-designation sign for the 14/32 intersection.",
-    icao: "Annex 14 Vol I §5.4.2 Mandatory instruction signs",
-    dimensions: [
-      { label: "Legend", value: "14-32" },
-      { label: "Face", value: "White on red" },
-      { label: "Placement (Table 5-6, code 3/4)", value: "11–21 m from the taxiway edge" },
-    ],
-    notes: "Position is schematic so the 14/32 designation face can be inspected without modelling every real hold.",
-    footprint: { x: -700, z: -118, headingDeg: 0, length: 1.2, width: 3.6 },
   },
   {
     id: "sign.loc.n",
@@ -364,24 +298,6 @@ export const EXTRA_FEATURES = [
     footprint: fp(RWY_0927, 0, 0, 3448, 60),
   },
   {
-    id: "phys.rwy.1432",
-    title: "RWY 14/32 physical characteristics",
-    kind: "physical",
-    location: "Crossing runway",
-    purpose: "Published length, width and shoulders for 14/32.",
-    icao: "Annex 14 Vol I Chapter 3; AIP India VABB AD 2.12",
-    dimensions: [
-      { label: "Length × width", value: "2871 × 45 m" },
-      { label: "Displaced thresholds (lab)", value: "14: 377 m; 32: 260 m" },
-      { label: "Shoulders (AIP 2017)", value: "15 m each side" },
-      { label: "True bearings (AIP 2017)", value: "134.52° / 314.52°" },
-      { label: "Surface / PCN (AIP 2017)", value: "Asphalt 100/F/A/W/T" },
-    ],
-    notes:
-      "Annex 14 Table 3-1 width for a code-4 precision runway is normally 45 m. Shoulder width of 15 m yields 75 m overall.",
-    footprint: fp(RWY_1432, 0, 0, 2871, 45),
-  },
-  {
     id: "phys.strip.0927",
     title: "RWY 09/27 strip",
     kind: "physical",
@@ -398,22 +314,6 @@ export const EXTRA_FEATURES = [
     footprint: fp(RWY_0927, 0, 0, 3568, 300),
   },
   {
-    id: "phys.strip.1432",
-    title: "RWY 14/32 strip",
-    kind: "physical",
-    location: "Graded strip centred on 14/32",
-    purpose: "Same §3.4 function on the crossing runway.",
-    icao: "Annex 14 Vol I §3.4 Runway strips",
-    dimensions: [
-      { label: "Computed length", value: "2991 m (2871 + 60 + 60)" },
-      { label: "14 (CAT I) width", value: "300 m (150 m each side) — precision code 3/4" },
-      { label: "32 (SALS) width", value: "150 m (75 m each side) — non-precision code 3/4, schematic" },
-    ],
-    notes:
-      "Strip dimensions for 14/32 were not quoted in the 2017 AD 2.12 extract. Figures here are computed from §3.4 and marked schematic/computed.",
-    footprint: fp(RWY_1432, 0, 0, 2991, 300),
-  },
-  {
     id: "phys.shoulder.0927",
     title: "RWY 09/27 shoulders",
     kind: "physical",
@@ -428,24 +328,10 @@ export const EXTRA_FEATURES = [
     footprint: fp(RWY_0927, 0, 0, 3448, 75),
   },
   {
-    id: "phys.shoulder.1432",
-    title: "RWY 14/32 shoulders",
-    kind: "physical",
-    location: "15 m each side of the 45 m runway",
-    purpose: "Shoulders bringing the overall prepared width out to 75 m.",
-    icao: "Annex 14 Vol I §3.2 Runway shoulders",
-    dimensions: [
-      { label: "Shoulder width (AIP 2017)", value: "15 m each side" },
-      { label: "Overall width", value: "75 m" },
-    ],
-    notes: "On a 45 m code-4 runway, 7.5 m shoulders would meet the 60 m overall-width aim in §3.2. VABB publishes 15 m.",
-    footprint: fp(RWY_1432, 0, 0, 2871, 75),
-  },
-  {
     id: "phys.slopes.0927",
     title: "Runway slopes (schematic)",
     kind: "physical",
-    location: "Both runways — no surveyed profile is modelled",
+    location: "RWY 09/27 — no surveyed profile is modelled",
     purpose: "Annex 14 limits overall and local longitudinal slope and requires a transverse slope that sheds water.",
     icao: "Annex 14 Vol I §3.1.12–3.1.19 Slopes on runways",
     dimensions: [
@@ -459,10 +345,6 @@ export const EXTRA_FEATURES = [
   },
   declared(RWY_0927, "09"),
   declared(RWY_0927, "27"),
-  declared(RWY_1432, "14"),
-  declared(RWY_1432, "32"),
   resa(RWY_0927, "09"),
   resa(RWY_0927, "27"),
-  resa(RWY_1432, "14"),
-  resa(RWY_1432, "32"),
 ];
