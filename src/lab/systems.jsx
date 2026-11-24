@@ -234,8 +234,14 @@ export function InspectRig() {
             delete window.__labShot;
         };
     }, [camera]);
-    return (<OrbitControls ref={controls} enabled={mode === "inspect"} enableDamping dampingFactor={0.08} minDistance={6} maxDistance={4200} maxPolarAngle={Math.PI / 2 - 0.03} makeDefault={mode === "inspect"}/>);
+    const sens = useLab((s) => s.lookSensitivity);
+    // Defaults are rotate 1 / zoom 1 / pan 1. Halved, then scaled by the HUD slider.
+    return (<OrbitControls ref={controls} enabled={mode === "inspect"} enableDamping dampingFactor={0.12} rotateSpeed={0.5 * sens} zoomSpeed={0.55 * sens} panSpeed={0.5 * sens} minDistance={6} maxDistance={4200} maxPolarAngle={Math.PI / 2 - 0.03} makeDefault={mode === "inspect"}/>);
 }
+/** Walk mouse-look (pointer lock): 0.0011 rad/px, half the previous 0.0022. */
+const WALK_LOOK_RAD_PER_PX = 0.0011;
+/** Touch / drag look when not locked: 0.006 rad/px, half the previous 0.012. */
+const TOUCH_LOOK_RAD_PER_PX = 0.006;
 export function WalkRig() {
     const mode = useLab((s) => s.mode);
     const selectedId = useLab((s) => s.selectedId);
@@ -249,12 +255,15 @@ export function WalkRig() {
     const pitch = useRef(-0.04);
     const pos = useRef(new THREE.Vector3(WALK_START.x, WALK_START.y, WALK_START.z));
     const speed = useRef(0);
+    const vel = useRef(new THREE.Vector3());
     const locked = useRef(false);
+    const skipMoves = useRef(0);
     useEffect(() => {
         pos.current.set(WALK_START.x, WALK_START.y, WALK_START.z);
         yaw.current = WALK_START.yaw;
         pitch.current = -0.04;
         speed.current = 0;
+        vel.current.set(0, 0, 0);
     }, [walkReset]);
     useEffect(() => {
         if (mode !== "walk")
@@ -295,14 +304,32 @@ export function WalkRig() {
         const onMove = (e) => {
             if (mode !== "walk" || !locked.current)
                 return;
-            yaw.current -= e.movementX * 0.0022;
-            pitch.current -= e.movementY * 0.0022;
+            // Browsers can report a huge bogus movementX/Y right after pointer lock and on
+            // some high-polling mice; skip the first events and clamp spikes.
+            if (skipMoves.current > 0) {
+                skipMoves.current -= 1;
+                return;
+            }
+            const MAX = 60;
+            const mx = Math.max(-MAX, Math.min(MAX, e.movementX || 0));
+            const my = Math.max(-MAX, Math.min(MAX, e.movementY || 0));
+            const k = WALK_LOOK_RAD_PER_PX * useLab.getState().lookSensitivity;
+            yaw.current -= mx * k;
+            pitch.current -= my * k;
             const lim = Math.PI / 2 - 0.04;
             pitch.current = Math.max(-lim, Math.min(lim, pitch.current));
         };
         const onLock = () => {
+            const was = locked.current;
             locked.current = document.pointerLockElement === el;
             setPointerLocked(locked.current);
+            if (locked.current && !was)
+                skipMoves.current = 2;
+            if (!locked.current && was) {
+                // Esc / alt-tab: release held keys so Shift-sprint or W never sticks.
+                input.reset();
+                vel.current.set(0, 0, 0);
+            }
         };
         const onClick = () => {
             if (mode !== "walk")
@@ -337,13 +364,16 @@ export function WalkRig() {
         };
     }, [camera, gl, layers, mode, select, setPointerLocked]);
     useFrame((_, dt) => {
-        const d = Math.min(dt, 0.1);
+        // Clamp dt so a hitch (tab switch, GC, shader compile) cannot teleport the camera;
+        // movement below is integrated in ≤50 ms sub-steps so speed is the same at any fps.
+        const frameDt = Math.min(Math.max(dt, 0), 0.25);
         if (mode !== "walk")
             return;
         const look = input.consumeLook();
         if (!locked.current) {
-            yaw.current -= look.dx * 0.012;
-            pitch.current -= look.dy * 0.012;
+            const k = TOUCH_LOOK_RAD_PER_PX * useLab.getState().lookSensitivity;
+            yaw.current -= Math.max(-80, Math.min(80, look.dx)) * k;
+            pitch.current -= Math.max(-80, Math.min(80, look.dy)) * k;
             const lim = Math.PI / 2 - 0.04;
             pitch.current = Math.max(-lim, Math.min(lim, pitch.current));
         }
@@ -383,12 +413,21 @@ export function WalkRig() {
         const rx = Math.cos(yaw.current);
         const rz = -Math.sin(yaw.current);
         const moving = len > 0.01;
-        const target = moving ? max : 0;
-        speed.current += (target - speed.current) * Math.min(1, d * 10);
-        const step = (moving ? max : 0) * d;
-        pos.current.x += (fx * az + rx * ax) * step;
-        pos.current.z += (fz * az + rz * ax) * step;
-        pos.current.y += vy * (sprint ? WALK_SPEED.verticalSprint : WALK_SPEED.vertical) * d;
+        // Frame-rate-independent exponential approach to the target velocity, so speed
+        // (and Shift sprint) ramps the same at 30, 60 or 144 fps instead of snapping.
+        const tx = moving ? (fx * az + rx * ax) * max : 0;
+        const tz = moving ? (fz * az + rz * ax) * max : 0;
+        const steps = Math.max(1, Math.ceil(frameDt / 0.05));
+        const d = frameDt / steps;
+        const a = 1 - Math.exp(-d * (moving ? 6 : 9));
+        for (let i = 0; i < steps; i++) {
+            vel.current.x += (tx - vel.current.x) * a;
+            vel.current.z += (tz - vel.current.z) * a;
+            pos.current.x += vel.current.x * d;
+            pos.current.z += vel.current.z * d;
+        }
+        speed.current = Math.hypot(vel.current.x, vel.current.z);
+        pos.current.y += vy * (sprint ? WALK_SPEED.verticalSprint : WALK_SPEED.vertical) * frameDt;
         if (vy === 0 && pos.current.y < eye + 0.02)
             pos.current.y = eye;
         if (pos.current.y < 0.4)

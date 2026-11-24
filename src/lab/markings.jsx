@@ -8,7 +8,7 @@ function pushBox(list, rwy, along, across, alongLen, acrossW) {
     const p = rwyPos(rwy, along, across);
     list.push({ x: p.x, z: p.z, w: acrossW, d: alongLen, ry: rwyYaw(rwy) });
 }
-function paintPolyline(out, pts, width = 0.3) {
+function paintPolyline(out, pts, width = 0.3, y) {
     for (let i = 1; i < pts.length; i++) {
         const a = pts[i - 1];
         const b = pts[i];
@@ -23,6 +23,7 @@ function paintPolyline(out, pts, width = 0.3) {
             w: width,
             d: len,
             ry: Math.atan2(dx, dz),
+            ...(y != null ? { y } : {}),
         });
     }
 }
@@ -176,8 +177,10 @@ function taxiCL(out) {
     for (const link of LINKS) {
         const paths = connectorPaths(link);
         paintPolyline(out, paths.straight, w);
-        paintPolyline(out, paths.east, w);
-        paintPolyline(out, paths.west, w);
+        // Lead lines sit on runway pavement: draw them a few mm above runway paint so the
+        // crossing of the side stripe never z-fights. They stay LEAD_OFFSET_M clear of the CL.
+        paintPolyline(out, paths.east, w, 0.036);
+        paintPolyline(out, paths.west, w, 0.036);
     }
     for (const spur of APRON_SPURS) {
         paintPolyline(out, apronSpurPoints(spur), w);
@@ -234,7 +237,7 @@ function taxiEdge(out) {
     }
     for (const link of LINKS) {
         const taxi = linkTaxi(link);
-        const zEnd = link.side * 28;
+        const zEnd = link.side * 30; // stop at the runway edge, not inside the side stripe
         for (const side of [-1, 1]) {
             const x = link.x + side * (TAXI_WIDTH / 2 - 0.25);
             paintPolyline(out, [{ x: x - 0.15, z: taxi.z }, { x: x - 0.15, z: zEnd }], 0.15);

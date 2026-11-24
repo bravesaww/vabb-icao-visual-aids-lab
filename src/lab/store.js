@@ -12,12 +12,28 @@ export const LAMP_SYSTEMS = [
 
 const allSystemsOn = () => Object.fromEntries(LAMP_SYSTEMS.map((s) => [s.id, true]));
 
+const SENS_KEY = "vabb-lab-look-sensitivity";
+function loadSensitivity() {
+    try {
+        const v = Number(globalThis.localStorage?.getItem(SENS_KEY));
+        return Number.isFinite(v) && v >= 0.2 && v <= 2 ? v : 1;
+    }
+    catch {
+        return 1;
+    }
+}
+
 export const useLab = create((set) => ({
     mode: "start",
     lighting: "day",
     layers: { markings: true, lights: true, signs: true, buildings: true, physical: true },
     lampsOn: true,
     lampSystems: allSystemsOn(),
+    /** "auto" follows the camera heading; "09" / "27" force the direction of operation. */
+    opDirection: "auto",
+    viewDirection: "09",
+    /** Multiplier on the (already halved) base look / orbit sensitivity. */
+    lookSensitivity: loadSensitivity(),
     selectedId: null,
     helpOpen: false,
     catalogOpen: false,
@@ -45,6 +61,18 @@ export const useLab = create((set) => ({
     setLampSystem: (k, on) => set((s) => ({
         lampSystems: { ...s.lampSystems, [k]: on },
     })),
+    setOpDirection: (opDirection) => set({ opDirection }),
+    setViewDirection: (viewDirection) => set({ viewDirection }),
+    setLookSensitivity: (v) => {
+        const lookSensitivity = Math.min(2, Math.max(0.2, Number(v) || 1));
+        try {
+            globalThis.localStorage?.setItem(SENS_KEY, String(lookSensitivity));
+        }
+        catch {
+            // storage unavailable (private mode / SSR) — keep in memory only
+        }
+        set({ lookSensitivity });
+    },
     select: (selectedId) => set({ selectedId }),
     setHelpOpen: (helpOpen) => set({ helpOpen }),
     setCatalogOpen: (catalogOpen) => set({ catalogOpen }),

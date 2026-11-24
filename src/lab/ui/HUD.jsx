@@ -1,4 +1,4 @@
-import { BookOpen, Building2, Eye, HelpCircle, Layers, Lightbulb, Moon, PersonStanding, Power, Ruler, Signpost, Sun, Sunset, X, } from "lucide-react";
+import { BookOpen, Building2, Eye, Gauge, HelpCircle, Layers, Lightbulb, Moon, PersonStanding, PlaneLanding, Power, Ruler, Signpost, Sun, Sunset, X, } from "lucide-react";
 import { useEffect } from "react";
 import { FEATURES, FEATURE_BY_ID } from "../catalog";
 import { LAMP_SYSTEMS, useLab } from "../store";
@@ -35,6 +35,11 @@ export function HUD() {
     const toggleLamps = useLab((s) => s.toggleLamps);
     const lampSystems = useLab((s) => s.lampSystems);
     const toggleLampSystem = useLab((s) => s.toggleLampSystem);
+    const opDirection = useLab((s) => s.opDirection);
+    const viewDirection = useLab((s) => s.viewDirection);
+    const setOpDirection = useLab((s) => s.setOpDirection);
+    const lookSensitivity = useLab((s) => s.lookSensitivity);
+    const setLookSensitivity = useLab((s) => s.setLookSensitivity);
     const selected = selectedId ? FEATURE_BY_ID.get(selectedId) : null;
     useEffect(() => {
         const onKey = (e) => {
@@ -71,6 +76,22 @@ export function HUD() {
             <Power className="size-3.5"/>
             <span className="hidden sm:inline">{lampsOn ? "Lamps ON" : "Lamps OFF"}</span>
           </button>
+          <div className="flex h-9 items-center gap-0.5 rounded-lg border border-border bg-panel/90 p-0.5 text-[12px] backdrop-blur-sm" title="Direction of operation: which runway end's last 600 m of edge lights shows yellow (Annex 14 §5.3.9.7). Auto follows the camera heading.">
+            <PlaneLanding className="mx-1 size-3.5 text-muted"/>
+            {[
+            { id: "auto", label: `Auto·${viewDirection}` },
+            { id: "09", label: "09" },
+            { id: "27", label: "27" },
+        ].map((o) => (<button key={o.id} type="button" onClick={() => setOpDirection(o.id)} className={cn("h-8 rounded-md px-2 font-medium", opDirection === o.id ? "bg-accent text-accent-fg" : "text-muted hover:text-fg")}>
+                {o.label}
+              </button>))}
+          </div>
+          <label className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-panel/90 px-2.5 text-[12px] text-muted backdrop-blur-sm" title="Look / orbit sensitivity">
+            <Gauge className="size-3.5"/>
+            <span className="hidden sm:inline">Look</span>
+            <input type="range" min={0.2} max={2} step={0.05} value={lookSensitivity} onChange={(e) => setLookSensitivity(e.target.value)} className="w-20 accent-amber-400" aria-label="Look sensitivity"/>
+            <span className="w-8 text-right font-mono tabular-nums text-fg">{lookSensitivity.toFixed(2)}</span>
+          </label>
         </div>
       </header>
 
@@ -184,7 +205,7 @@ export function HelpModal() {
           </p>
           <p>
             World scale is 1 metre per unit, +Y up, −Z north. This lab models a single runway: RWY 09/27, 3448 × 60 m, drawn as a CAT II precision runway at both ends (AIP 2017 lists 09 as CAT I — that upgrade is labelled schematic). Open Physical in the catalog for declared distances, strips, RESA and shoulders. PAPI colours respond to your camera elevation
-            angle: two white and two red means on slope. The Lights layer hides fixtures; Lamps ON/OFF (shortcut L) extinguishes the lamps but leaves the housings visible.
+            angle: two white and two red means on slope. The Lights layer hides fixtures; Lamps ON/OFF (shortcut L) extinguishes the lamps but leaves the housings visible. Runway edge lights are bi-directional: white, yellow over the last 600 m toward the stop end (§5.3.9.7) and red before a displaced threshold. The direction control (Auto / 09 / 27) picks which direction of operation you are seeing; Auto follows the camera heading. Runway centre-line colour coding follows the same direction. The Look slider scales mouse, touch and orbit sensitivity.
           </p>
           <p>
             Inspect: drag to orbit, scroll to zoom, click any marking, light or sign. Walk: start at

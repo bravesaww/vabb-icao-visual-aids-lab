@@ -26,37 +26,51 @@ export function arcPoints(cx, cz, r, theta0, theta1, stepM = 3) {
     return pts;
 }
 
+/**
+ * Lateral offset of the lead-on/lead-off line from the runway centre line (centre to centre).
+ * Runway CL paint is 0.90 m wide (±0.45 m), taxi CL 0.30 m: 1.2 m leaves a clear 0.6 m
+ * gap so the yellow line never lies on the white runway centre line (schematic/approximate).
+ */
+export const LEAD_OFFSET_M = 1.2;
+/** Length of the parallel run beyond the point of tangency before the lead line ends (schematic). */
+export const LEAD_PARALLEL_M = 60;
+
+function straight(x0, z0, x1, z1, stepM = 4) {
+    const n = Math.max(2, Math.round(Math.hypot(x1 - x0, z1 - z0) / stepM));
+    const pts = [];
+    for (let i = 0; i <= n; i++)
+        pts.push({ x: x0 + ((x1 - x0) * i) / n, z: z0 + ((z1 - z0) * i) / n });
+    return pts;
+}
+
+/**
+ * Lead-on/lead-off curves. Each runs from the stub (tangent to the stub CL) round a
+ * quarter circle to a tangency point offset LEAD_OFFSET_M from the runway CL on the
+ * taxiway side, then parallel for LEAD_PARALLEL_M and stops.
+ * Returned point order: stub end → tangency → parallel end.
+ */
 export function leadArcPoints(link, R = LEAD_R) {
     const { x, side } = link;
     const leads = link.leads ?? "both";
+    const cz = side * (R + LEAD_OFFSET_M);
+    const zLine = side * LEAD_OFFSET_M;
     const east = [];
     const west = [];
-    if (side < 0) {
-        if (leads !== "west")
-            east.push(...arcPoints(x + R, -R, R, Math.PI, Math.PI / 2));
-        if (leads !== "east")
-            west.push(...arcPoints(x - R, -R, R, 0, Math.PI / 2));
+    if (leads !== "west") {
+        const arc = side < 0 ? arcPoints(x + R, cz, R, Math.PI, Math.PI / 2) : arcPoints(x + R, cz, R, Math.PI, Math.PI * 1.5);
+        east.push(...arc, ...straight(x + R, zLine, x + R + LEAD_PARALLEL_M, zLine).slice(1));
     }
-    else {
-        if (leads !== "west")
-            east.push(...arcPoints(x + R, R, R, Math.PI, Math.PI * 1.5));
-        if (leads !== "east")
-            west.push(...arcPoints(x - R, R, R, 0, -Math.PI / 2));
+    if (leads !== "east") {
+        const arc = side < 0 ? arcPoints(x - R, cz, R, 0, Math.PI / 2) : arcPoints(x - R, cz, R, 0, -Math.PI / 2);
+        west.push(...arc, ...straight(x - R, zLine, x - R - LEAD_PARALLEL_M, zLine).slice(1));
     }
     return { east, west };
 }
 
+/** Stub centre line from the parallel taxiway to the start of the lead curves. */
 export function stubStraightPoints(link, stepM = 4) {
     const taxi = linkTaxi(link);
-    const z0 = taxi.z;
-    const z1 = link.side * LEAD_R;
-    const span = z1 - z0;
-    const n = Math.max(2, Math.round(Math.abs(span) / stepM));
-    const pts = [];
-    for (let i = 0; i <= n; i++) {
-        pts.push({ x: link.x, z: z0 + (span * i) / n });
-    }
-    return pts;
+    return straight(link.x, taxi.z, link.x, link.side * (LEAD_R + LEAD_OFFSET_M), stepM);
 }
 
 /** Centre-line path pieces used for both paint and inset lights. */

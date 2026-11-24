@@ -43,6 +43,13 @@ class InputState {
         this.lookDy = 0;
         return { dx, dy };
     }
+    /** Drop held keys and pending look deltas (blur, tab hidden, pointer-lock lost). */
+    reset() {
+        this.keys.clear();
+        this.lookDx = 0;
+        this.lookDy = 0;
+        this.fPressed = false;
+    }
     consumeF() {
         const v = this.fPressed;
         this.fPressed = false;
@@ -64,7 +71,7 @@ class InputState {
         const onUp = (e) => {
             this.keys.delete(e.code);
         };
-        const onBlur = () => this.keys.clear();
+        const onBlur = () => this.reset();
         window.addEventListener("keydown", onDown);
         window.addEventListener("keyup", onUp);
         window.addEventListener("blur", onBlur);

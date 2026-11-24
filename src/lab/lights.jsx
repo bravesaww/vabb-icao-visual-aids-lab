@@ -31,23 +31,41 @@ function push(sysBuckets, item) {
         b.white.push(item);
 }
 
-function edgeLamps(rwy, sysBuckets) {
+/** Annex 14 §5.3.9.7: yellow over the last 600 m or last third, whichever is less. */
+export function edgeCautionLength(rwy) {
+    return Math.min(600, rwy.length / 3);
+}
+
+/**
+ * Distance remaining to the far (stop) end for traffic operating in direction `dir`
+ * ("09" = travelling east, "27" = travelling west).
+ */
+function remainingFor(rwy, dir, along) {
+    const travel = landingSign(rwy.ends[dir]);
+    const half = rwy.length / 2;
+    return travel > 0 ? half - along : along + half;
+}
+
+/**
+ * Runway edge lights (§5.3.9). Fittings are bi-directional; the colour shown depends on
+ * the direction of operation: variable white, yellow over the last 600 m toward the stop
+ * end (§5.3.9.7), and red toward the approach over the displaced section before the
+ * threshold in use (§5.3.9.8).
+ */
+function edgeLamps(rwy, sysBuckets, dir) {
     const step = 60;
     const half = rwy.length / 2;
     const edge = rwy.width / 2 + 0.2;
+    const caution = edgeCautionLength(rwy);
+    const end = rwy.ends[dir];
+    const ls = landingSign(end);
+    const thr = thresholdAlong(rwy, dir);
+    const pre = end.preThrEdgeRedM ?? end.displaced;
     for (let along = -half; along <= half + 0.01; along += step) {
-        const remainingPos = half - along;
-        const remainingNeg = along + half;
-        let col = remainingPos <= 600 || remainingNeg <= 600 ? C.yellow : C.white;
-        for (const end of Object.values(rwy.ends)) {
-            const ls = landingSign(end);
-            const thr = thresholdAlong(rwy, end.name);
-            const pre = end.preThrEdgeRedM ?? end.displaced;
-            const distBeforeThr = (thr - along) * ls;
-            if (distBeforeThr > 0 && distBeforeThr <= pre + 1) {
-                col = C.red;
-            }
-        }
+        let col = remainingFor(rwy, dir, along) <= caution + 0.01 ? C.yellow : C.white;
+        const distBeforeThr = (thr - along) * ls;
+        if (distBeforeThr > 0 && distBeforeThr <= pre + 1)
+            col = C.red;
         for (const side of [-edge, edge]) {
             const p = rwyPos(rwy, along, side, 0.45);
             push(sysBuckets, { ...p, color: col, r: 0.28, sys: "edge" });
@@ -55,24 +73,19 @@ function edgeLamps(rwy, sysBuckets) {
     }
 }
 
-function clLamps(rwy, sysBuckets) {
+/** Runway CL lights (§5.3.12.5) coded by distance remaining in the direction of operation. */
+function clLamps(rwy, sysBuckets, dir) {
     const step = rwy.clLightSpacing || 15;
     const half = rwy.length / 2;
     for (let along = -half + 8; along < half - 8; along += step) {
-        const remPos = half - along;
-        const remNeg = along + half;
-        const code = (rem) => {
-            if (rem <= 300)
-                return C.red;
-            if (rem <= 900) {
-                const i = Math.round(along / step);
-                return i % 2 === 0 ? C.red : C.white;
-            }
-            return C.white;
-        };
-        const col = remPos <= 900 ? code(remPos) : remNeg <= 900 ? code(remNeg) : C.white;
+        const rem = remainingFor(rwy, dir, along);
+        let col = C.white;
+        if (rem <= 300)
+            col = C.red;
+        else if (rem <= 900)
+            col = Math.round(along / step) % 2 === 0 ? C.red : C.white;
         const p = rwyPos(rwy, along, 0, 0.06);
-        push(sysBuckets, { ...p, color: col, r: 0.16, sys: "centreLine" });
+        push(sysBuckets, { ...p, color: col, r: 0.16, sys: "centreLine", cap: 3.2 });
     }
 }
 
@@ -215,32 +228,39 @@ function taxiLamps(sysBuckets) {
     }
     for (const link of LINKS) {
         const taxi = linkTaxi(link);
+        // Blue stub edge lights stop at the runway edge (never on runway pavement).
         const zA = taxi.z;
-        const zB = link.side * 10;
+        const zB = link.side * (RWY_0927.width / 2 + 2);
         const z0 = Math.min(zA, zB);
         const z1 = Math.max(zA, zB);
-        for (let z = z0; z <= z1; z += 20) {
+        for (let z = z0; z <= z1 + 0.01; z += 20) {
             push(sysBuckets, { x: link.x - TAXI_WIDTH / 2, y: 0.35, z, color: C.blue, r: 0.16, sys: "taxiway" });
             push(sysBuckets, { x: link.x + TAXI_WIDTH / 2, y: 0.35, z, color: C.blue, r: 0.16, sys: "taxiway" });
         }
+        // Centre-line lights follow the offset lead line (LEAD_OFFSET_M clear of the runway CL).
+        // §5.3.17: alternate green/yellow from the runway end of the lead line out to the
+        // ILS critical area / strip edge; first (nearest runway CL) green, last yellow.
         const paths = connectorPaths(link);
-        const pts = uniquePts([
-            ...sampleAlong(paths.straight, 15),
-            ...sampleAlong(paths.east, 12),
-            ...sampleAlong(paths.west, 12),
-        ]);
-        const inZone = pts.filter((p) => Math.abs(p.z) <= ILS_ALT_ZONE_M).sort((a, b) => Math.abs(a.z) - Math.abs(b.z));
-        const outZone = pts.filter((p) => Math.abs(p.z) > ILS_ALT_ZONE_M);
-        inZone.forEach((p, i) => {
-            let col = i % 2 === 0 ? C.green : C.yellow;
-            if (i === 0)
-                col = C.green;
-            if (i === inZone.length - 1)
-                col = C.yellow;
-            push(sysBuckets, { x: p.x, y: 0.06, z: p.z, color: col, r: 0.12, sys: "taxiway" });
-        });
-        for (const p of outZone) {
-            push(sysBuckets, { x: p.x, y: 0.06, z: p.z, color: C.green, r: 0.12, sys: "taxiway" });
+        const stubPts = sampleAlong([...paths.straight].reverse(), 15).slice(1);
+        const leads = [paths.east, paths.west].filter((l) => l.length > 1);
+        const seqs = leads.map((l) => sampleAlong([...l].reverse(), 12));
+        const stubSeq = stubPts;
+        const colourSeq = (seq, startIdx) => seq.map((pt, k) => ({ pt, i: startIdx + k }));
+        const all = [];
+        for (const s of seqs)
+            all.push(...colourSeq(s, 0));
+        const leadLen = seqs.length ? seqs[0].length : 0;
+        all.push(...colourSeq(stubSeq, leadLen));
+        const lastInZone = Math.max(...all.filter((a) => Math.abs(a.pt.z) <= ILS_ALT_ZONE_M).map((a) => a.i), 0);
+        for (const { pt, i } of all) {
+            let col = C.green;
+            if (Math.abs(pt.z) <= ILS_ALT_ZONE_M) {
+                col = i % 2 === 0 ? C.green : C.yellow;
+                if (i === lastInZone)
+                    col = C.yellow;
+            }
+            const nearCl = Math.abs(pt.z) < 4;
+            push(sysBuckets, { x: pt.x, y: 0.06, z: pt.z, color: col, r: 0.12, sys: "taxiway", ...(nearCl ? { cap: 2.5 } : {}) });
         }
     }
     for (const spur of APRON_SPURS) {
@@ -285,6 +305,7 @@ function InstancedLamps({ items, color, pulse, lit, lighting }) {
         fog: false,
     }), [color, lighting]);
     const base = useMemo(() => items.map((it) => it.r ?? 0.16), [items]);
+    const caps = useMemo(() => items.map((it) => it.cap), [items]);
     const scales = glowScale(lighting);
     const scratch = useMemo(() => new THREE.Vector3(), []);
     useLayoutEffect(() => {
@@ -315,7 +336,7 @@ function InstancedLamps({ items, color, pulse, lit, lighting }) {
             const flash = lit && pulse ? pulse(t, i) : 1;
             dummy.position.set(it.x, it.y, it.z);
             if (lit) {
-                dummy.scale.setScalar(scaledRadius(base[i], scales.core, dist, scales.k, scales.maxMul) * flash);
+                dummy.scale.setScalar(scaledRadius(base[i], scales.core, dist, scales.k, Math.min(scales.maxMul, caps[i] ?? Infinity)) * flash);
             }
             else {
                 dummy.scale.setScalar(base[i] * 0.85);
@@ -323,7 +344,7 @@ function InstancedLamps({ items, color, pulse, lit, lighting }) {
             dummy.updateMatrix();
             coreRef.current.setMatrixAt(i, dummy.matrix);
             if (lit && glowRef.current) {
-                dummy.scale.setScalar(scaledRadius(base[i], scales.glow, dist, scales.k, scales.maxMul) * flash);
+                dummy.scale.setScalar(scaledRadius(base[i], scales.glow, dist, scales.k, Math.min(scales.maxMul, caps[i] ?? Infinity)) * flash);
                 dummy.updateMatrix();
                 glowRef.current.setMatrixAt(i, dummy.matrix);
             }
@@ -403,18 +424,39 @@ function PapiRow({ rwy, endName, lit }) {
 
 const COLOR_KEYS = ["white", "yellow", "red", "green", "blue"];
 
+/** Auto direction of operation: looking east = RWY 09 traffic, looking west = RWY 27. */
+function ViewDirectionTracker() {
+    const { camera } = useThree();
+    const fwd = useMemo(() => new THREE.Vector3(), []);
+    useFrame(() => {
+        camera.getWorldDirection(fwd);
+        const st = useLab.getState();
+        if (st.opDirection !== "auto")
+            return;
+        // Hysteresis so a near-north/south view does not flicker the colours.
+        if (fwd.x > 0.2 && st.viewDirection !== "09")
+            st.setViewDirection("09");
+        else if (fwd.x < -0.2 && st.viewDirection !== "27")
+            st.setViewDirection("27");
+    });
+    return null;
+}
+
 export function Lights() {
     const on = useLab((s) => s.layers.lights);
     const lighting = useLab((s) => s.lighting);
     const lampsOn = useLab((s) => s.lampsOn);
     const lampSystems = useLab((s) => s.lampSystems);
+    const opDirection = useLab((s) => s.opDirection);
+    const viewDirection = useLab((s) => s.viewDirection);
+    const dir = opDirection === "auto" ? viewDirection : opDirection;
     const built = useMemo(() => {
         const sys = {};
         const rabbit = [];
         const reil = [];
         const wig = [];
-        edgeLamps(RWY_0927, sys);
-        clLamps(RWY_0927, sys);
+        edgeLamps(RWY_0927, sys, dir);
+        clLamps(RWY_0927, sys, dir);
         for (const name of Object.keys(RWY_0927.ends)) {
             thresholdBar(RWY_0927, name, sys);
             als(RWY_0927, name, sys, rabbit);
@@ -424,18 +466,19 @@ export function Lights() {
         taxiLamps(sys);
         stopAndGuard(sys, wig);
         return { sys, rabbit, reil, wig };
-    }, []);
+    }, [dir]);
     if (!on)
         return null;
     const sysOn = (k) => lampsOn && lampSystems[k] !== false;
     const renderGroup = (itemsByColor, sys, extra) => {
         const lit = sysOn(sys);
         return (<>
-        {COLOR_KEYS.map((k) => (<InstancedLamps key={k} items={itemsByColor?.[k] ?? []} color={C[k]} lit={lit} lighting={lighting}/>))}
+        {COLOR_KEYS.map((k) => (<InstancedLamps key={`${k}-${dir}-${itemsByColor?.[k]?.length ?? 0}`} items={itemsByColor?.[k] ?? []} color={C[k]} lit={lit} lighting={lighting}/>))}
         {extra}
       </>);
     };
     return (<group>
+      <ViewDirectionTracker />
       {renderGroup(built.sys.edge, "edge")}
       {renderGroup(built.sys.centreLine, "centreLine")}
       {renderGroup(built.sys.tdz, "tdz")}
