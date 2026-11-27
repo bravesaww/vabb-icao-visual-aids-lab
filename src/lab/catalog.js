@@ -192,7 +192,7 @@ export const FEATURES = [
             { label: "Runway width", value: "60 m" },
             { label: "Placement", value: "Outer edge approximately coinciding with the runway edge" },
         ],
-        notes: "Continuous white. The displaced sections keep side stripes — only landing is restricted, not pavement width.",
+        notes: "White. The displaced sections keep side stripes — only landing is restricted, not pavement width. Where a taxiway lead line crosses the runway edge the side stripe is interrupted for a short gap (1.5 m clear either side of the yellow line) — Annex 14 Vol I 5.2.1.3 (Standard) allows runway side stripe markings to be interrupted at a runway/taxiway intersection; gap length schematic.",
         footprint: fp(RWY_0927, 0, 0, 3448, 60),
     },
     {
@@ -224,7 +224,7 @@ export const FEATURES = [
             { label: "Width", value: "At least 0.15 m; 0.30 m where extra conspicuity is needed (lab draws 0.30 m)" },
             { label: "Taxiway width", value: "23 m (schematic)" },
         ],
-        notes: "Parallel taxiway N runs the full 3448 m paved length and terminates into end connectors N09 (RWY 09 physical end) and N27 (RWY 27 physical end). Midfield connectors N1–N4 plus those end links join it to the runway with fillets and curved lead-on/lead-off centre lines. On the runway each lead line curves (R 36 m) to a point 1.2 m to the taxiway side of the runway centre line, runs parallel for 60 m and ends, so it never lies on the white runway centre line (offset and lengths schematic/approximate). A north MRO pad overlaps N (no gap). Layout of the stubs is schematic/approximate.",
+        notes: "Parallel taxiway N runs the full 3448 m paved length and terminates into end connectors N09 (RWY 09 physical end) and N27 (RWY 27 physical end). Midfield connectors N1–N4 plus those end links join it to the runway with fillets and curved lead-on/lead-off centre lines. On the runway each lead line curves (R 36 m) to a point 1.2 m to the taxiway side of the runway centre line and then runs parallel to it, so it never lies on the white runway centre line (offset schematic/approximate). Yellow paint never touches white runway paint: Annex 14 Vol I 5.2.1.3 (Standard) — at a runway/taxiway intersection the runway markings are displayed and the taxiway markings interrupted (side stripes may be interrupted). The lab keeps a 1.5 m clear gap to threshold stripes and bar, designation, TDZ, aiming-point and displaced-threshold arrows (1.5 m follows State practice such as UK RA 3514, not an Annex figure). Consequences: N1/S1 leads are broken across the 300 m TDZ marks of RWY 09; the N4/S3 east leads end before the RWY 27 threshold stripes; and on the end links N09/S09/N27/S27 the parallel run ends about 20 m past the tangency point, before the first displaced-threshold arrow, instead of the 60 m of Recommendation 5.2.8.7 (a Recommendation yields to the Standard). A north MRO pad overlaps N (no gap). Layout of the stubs is schematic/approximate.",
         footprint: { x: 0, z: TAXI_N.z, headingDeg: 90, length: TAXI_N.x1 - TAXI_N.x0, width: 0.3 },
     },
     {
@@ -332,7 +332,7 @@ export const FEATURES = [
             { label: "Colour on lead-in/out (within 150 m of RWY CL)", value: "Alternating green and yellow" },
             { label: "First / last in the coded section", value: "First (nearest the runway CL) green as viewed from the runway; last (at the perimeter) yellow" },
             { label: "Spacing (schematic)", value: "30 m on parallels, 15 m on connectors / curves" },
-            { label: "On the runway", value: "Follow the lead line 1.2 m off the runway CL — never on top of the runway CL lights (schematic offset)" },
+            { label: "On the runway", value: "Follow the lead line 1.2 m off the runway CL — never on top of the runway CL lights (schematic offset); omitted wherever the painted lead line is interrupted or ends for white runway markings" },
         ],
         notes: "§5.3.17 codes exit taxiway centre-line lights green/yellow from near the runway centre line to the ILS critical/sensitive area or the inner edge of the strip (here the code-4 strip half-width of 150 m). Beyond that they are green. Geometry of the stubs is schematic/approximate.",
         footprint: { x: 0, z: TAXI_S.z, headingDeg: 90, length: 3200, width: 1 },

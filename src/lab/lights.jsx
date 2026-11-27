@@ -242,8 +242,11 @@ function taxiLamps(sysBuckets) {
         // ILS critical area / strip edge; first (nearest runway CL) green, last yellow.
         const paths = connectorPaths(link);
         const stubPts = sampleAlong([...paths.straight].reverse(), 15).slice(1);
-        const leads = [paths.east, paths.west].filter((l) => l.length > 1);
-        const seqs = leads.map((l) => sampleAlong([...l].reverse(), 12));
+        // Lights follow exactly the painted (clipped) lead pieces, so no lamp sits where the
+        // yellow line is interrupted for white runway markings. Each lead's pieces are
+        // sampled from the runway end back toward the stub to keep the colour sequence.
+        const leads = [paths.east, paths.west].filter((l) => l.length > 0);
+        const seqs = leads.map((pieces) => [...pieces].reverse().flatMap((pc) => sampleAlong([...pc].reverse(), 12)));
         const stubSeq = stubPts;
         const colourSeq = (seq, startIdx) => seq.map((pt, k) => ({ pt, i: startIdx + k }));
         const all = [];
