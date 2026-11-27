@@ -95,7 +95,7 @@ export const EXTRA_FEATURES = [
       { label: "Dash / gap", value: "As shown in the Annex figure (lab uses 3 m / 3 m — schematic/approximate)" },
     ],
     notes:
-      "Annex 14 extends the marking 47 m prior to the holding position. Each connector is long enough for the full 47 m on the stub (schematic layout).",
+      "Annex 14 (5.2.8.9) extends the marking 47 m from Pattern A away from the runway. The junction turn lines leave the stub centre line inside that 47 m, so dashes within 1.5 m of a turn line are omitted and at least three dashes continue beyond (5.2.8.9 c applied by analogy — schematic). The old 3 m cross-dashes painted on the parallel next to each junction were not an ICAO marking and have been removed.",
     footprint: { x: TAXI_N1.x, z: -85, headingDeg: 0, length: 50, width: 4 },
   },
   {
@@ -116,7 +116,7 @@ export const EXTRA_FEATURES = [
     id: "mark.info.paint.n",
     title: "Information marking N",
     kind: "marking",
-    location: "Taxiway N near the N1 junction",
+    location: "Taxiway N east of the N1 junction, beside the centre line",
     purpose: "Painted location information on the pavement — yellow on black (or black on yellow on a light surface).",
     icao: "Annex 14 Vol I §5.2.17 Information marking",
     dimensions: [
@@ -124,7 +124,7 @@ export const EXTRA_FEATURES = [
       { label: "Colours", value: "Yellow on black, or black on yellow" },
     ],
     notes: "Repeats or supplements an information sign at a complex intersection.",
-    footprint: { x: TAXI_N1.x + 40, z: TAXI_N.z, headingDeg: 90, length: 8, width: 8 },
+    footprint: { x: TAXI_N1.x + 75, z: TAXI_N.z - 5, headingDeg: 90, length: 8, width: 8 },
   },
   {
     id: "mark.taxi.edge",
@@ -138,8 +138,26 @@ export const EXTRA_FEATURES = [
       { label: "Style", value: "Two continuous yellow lines (schematic 0.15 m, 0.15 m apart)" },
       { label: "Taxiway width (lab)", value: "23 m (schematic)" },
     ],
-    notes: "Included so students can compare centre-line vs edge cues. Treat geometry as schematic/approximate.",
+    notes: "Included so students can compare centre-line vs edge cues. The lines follow every fillet and stop at junction mouths and apron joins (no edge paint across pavement). Treat geometry as schematic/approximate.",
     footprint: { x: 0, z: TAXI_N.z, headingDeg: 90, length: TAXI_N.x1 - TAXI_N.x0, width: 23 },
+  },
+  {
+    id: "mark.taxi.junction",
+    title: "Taxiway junctions and fillets",
+    kind: "marking",
+    location: "Every connector / parallel junction (N1–N4, S1–S3, end links), the runway corners of each stub, and the apron joins",
+    purpose:
+      "Curved yellow turn lines for each turning movement, with paved fillets so the main gear of a code-F aeroplane keeps its wheel clearance while the cockpit stays over the line.",
+    icao: "Annex 14 Vol I 3.9.3 (Standard: wheel clearance), 3.9.5 and 3.9.6 (Recommendations: curves and fillets), 5.2.8.6 (Recommendation: centre line on curves); ADM Doc 9157 Part 2 guidance",
+    dimensions: [
+      { label: "Turn line radius (schematic)", value: "45 m at taxiway junctions; 36 m lead-on/off onto the runway" },
+      { label: "Design aeroplane (approximate)", value: "Code F, OMGWS 14.3 m, cockpit-to-main-gear 33 m" },
+      { label: "Wheel clearance kept", value: "4 m (3.9.3: OMGWS 9–15 m; curves, wheel base ≥ 18 m)" },
+      { label: "Apron-corner fillets (schematic)", value: "R 22 m" },
+    ],
+    notes:
+      "Fillet outlines are computed, not taken from a VABB chart: the main gear is tracked as a pursuit curve behind a cockpit that follows each turn line in both directions, and the pavement is widened wherever the outer main wheel would come within 4 m of the edge. With a code-F aeroplane this widens most of each stub and gives long, thin tapers along the parallels. Real aerodromes often use smaller fillets with judgemental oversteering; all sizes here are schematic/approximate.",
+    footprint: { x: -400, z: -140, headingDeg: 0, length: 50, width: 80 },
   },
   {
     id: "mark.intermediate.hold",
@@ -151,8 +169,9 @@ export const EXTRA_FEATURES = [
     dimensions: [
       { label: "Style", value: "A single broken yellow line" },
       { label: "Line width", value: "0.30 m typical (3D slightly overscale)" },
+      { label: "Dash / gap (schematic)", value: "1 m / 1 m, across the full taxiway width" },
     ],
-    notes: "Distinct from Pattern A/B runway-holding markings. Placement on N is schematic.",
+    notes: "Distinct from Pattern A/B runway-holding markings. Drawn across taxiway N (it was previously drawn lengthwise along the centre line by mistake). Placement on N is schematic; at a taxiway/taxiway intersection 5.2.11.3 would place it clear of the intersecting taxiway.",
     footprint: { x: -800, z: TAXI_N.z, headingDeg: 0, length: 4, width: 23 },
   },
   {

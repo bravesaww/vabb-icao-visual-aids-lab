@@ -1,7 +1,8 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { RWY_0927, TAXI_N, TAXI_S, TAXI_N1, TAXI_WIDTH, LINKS, APRON_SPURS, rwyPos, rwyYaw, linkTaxi } from "./world";
+import { RWY_0927, TAXI_N, TAXI_S, TAXI_N1, TAXI_WIDTH, LINKS, APRON_SPURS, rwyPos, rwyYaw } from "./world";
 import { apronSpurPoints, connectorPaths, holdZ, sideStripeGaps } from "./taxiways";
+import { junctionGeometry, stubHalfWidth, taxiwayEdges } from "./junctions";
 import { digitSegs, DIGIT_W } from "./digits";
 import { centreline, zebra, designation, aiming, tdz, sideStripes, arrows } from "./runwayPaint";
 import { useLab } from "./store";
@@ -24,16 +25,25 @@ function paintPolyline(out, pts, width = 0.3, y) {
         });
     }
 }
+/** Pattern A across the full (fillet-widened) stub width at the holding position. */
+function holdSpan(link, z) {
+    const w = stubHalfWidth(link, z, -1);
+    const e = stubHalfWidth(link, z, 1);
+    return { x0: link.x - w + 0.5, x1: link.x + e - 0.5 };
+}
 function holdPatternA(out, link) {
-    const x = link.x;
     const z = holdZ(link);
     const towardRwy = -link.side;
-    const w = 18;
-    out.push({ x, z: z + towardRwy * 1.35, w, d: 0.9, ry: 0 });
-    out.push({ x, z: z + towardRwy * 0.45, w, d: 0.9, ry: 0 });
-    for (let i = -3; i <= 3; i++) {
-        out.push({ x: x + i * 2.6, z: z - towardRwy * 2.25, w: 1.4, d: 0.9, ry: 0 });
-        out.push({ x: x + i * 2.6, z: z - towardRwy * 4.05, w: 1.4, d: 0.9, ry: 0 });
+    const { x0, x1 } = holdSpan(link, z);
+    const xc = (x0 + x1) / 2;
+    const w = x1 - x0;
+    out.push({ x: xc, z: z + towardRwy * 1.35, w, d: 0.9, ry: 0 });
+    out.push({ x: xc, z: z + towardRwy * 0.45, w, d: 0.9, ry: 0 });
+    const n = Math.floor(w / 2.6);
+    for (let i = 0; i < n; i++) {
+        const x = x0 + 0.7 + i * 2.6 + (w - 1.4 - (n - 1) * 2.6) / 2;
+        out.push({ x, z: z - towardRwy * 2.25, w: 1.4, d: 0.9, ry: 0 });
+        out.push({ x, z: z - towardRwy * 4.05, w: 1.4, d: 0.9, ry: 0 });
     }
 }
 function holdAllPatternA(out) {
@@ -46,7 +56,7 @@ function paintXRun(out, x0, x1, z, w, step = 40) {
         const d = xB - x;
         if (d < 0.4)
             continue;
-        out.push({ x: (x + xB) / 2, z, w, d: d * 0.98, ry: Math.PI / 2 });
+        out.push({ x: (x + xB) / 2, z, w, d, ry: Math.PI / 2 });
     }
 }
 function taxiCL(out) {
@@ -64,35 +74,63 @@ function taxiCL(out) {
     for (const spur of APRON_SPURS) {
         paintPolyline(out, apronSpurPoints(spur), w);
     }
+    // Curved centre-line turn markings at every taxiway/taxiway and taxiway/apron junction
+    // (Annex 14 Vol I 5.2.8.6). The straight through-lines above are kept.
+    for (const t of junctionGeometry().turns) {
+        paintPolyline(out, t.pts, w);
+    }
 }
 
 function holdPatternB(out, link) {
-    const x = link.x;
     const z = holdZ(link) - (-link.side) * 6;
-    const w = 18;
-    out.push({ x, z: z - 0.45, w, d: 0.3, ry: 0 });
-    out.push({ x, z: z + 0.45, w, d: 0.3, ry: 0 });
-    for (let i = -6; i <= 6; i++) {
-        out.push({ x: x + i * 1.4, z, w: 0.3, d: 1.2, ry: 0 });
+    const { x0, x1 } = holdSpan(link, z);
+    const xc = (x0 + x1) / 2;
+    const w = x1 - x0;
+    out.push({ x: xc, z: z - 0.45, w, d: 0.3, ry: 0 });
+    out.push({ x: xc, z: z + 0.45, w, d: 0.3, ry: 0 });
+    for (let x = x0 + 0.5; x <= x1 - 0.5; x += 1.4) {
+        out.push({ x, z, w: 0.3, d: 1.2, ry: 0 });
     }
 }
 function holdAllPatternB(out) {
     for (const link of LINKS)
         holdPatternB(out, link);
 }
+/**
+ * Enhanced taxiway centre line (Annex 14 Vol I 5.2.8.9): two dashed lines either side of
+ * the centre line from Pattern A out to 47 m. Where a junction turn curve leaves the stub
+ * centre line inside that distance, dashes within 1.5 m of the curve are dropped (5.2.8.9 c
+ * applied by analogy) and at least three dashes continue beyond it.
+ */
 function enhancedCL(out) {
+    const DASH = 3;
+    const GAP = 3;
+    const OFF = 0.3;
+    const turns = junctionGeometry().turns;
     for (const link of LINKS) {
         const hz = holdZ(link);
-        for (let d = 3; d < 47; d += 6) {
-            const z = hz + link.side * d;
-            out.push({ x: link.x - 0.3, z, w: 0.15, d: 3, ry: 0 });
-            out.push({ x: link.x + 0.3, z, w: 0.15, d: 3, ry: 0 });
-        }
-        const taxi = linkTaxi(link);
-        for (let i = 0; i < 4; i++) {
-            const cx = link.x + 8 + i * 6;
-            out.push({ x: cx, z: taxi.z - 0.3, w: 3, d: 0.15, ry: Math.PI / 2 });
-            out.push({ x: cx, z: taxi.z + 0.3, w: 3, d: 0.15, ry: Math.PI / 2 });
+        const curves = turns.filter((t) => t.junction === link.id).map((t) => t.pts);
+        for (const sx of [-1, 1]) {
+            const x = link.x + sx * OFF;
+            const near = (z) => curves.some((pts) => pts.some((p) => Math.abs(p.x - x) < 1.65 && Math.abs(p.z - z) < DASH / 2 + 1.5));
+            let d = DASH / 2;
+            let afterGap = 0;
+            let gapSeen = false;
+            while (d < 47 + 3 * (DASH + GAP)) {
+                const z = hz + link.side * d;
+                if (d > 47 && (!gapSeen || afterGap >= 3))
+                    break;
+                if (near(z)) {
+                    gapSeen = true;
+                    afterGap = 0;
+                }
+                else {
+                    out.push({ x, z, w: 0.15, d: DASH, ry: 0 });
+                    if (gapSeen)
+                        afterGap++;
+                }
+                d += DASH + GAP;
+            }
         }
     }
 }
@@ -106,35 +144,65 @@ function blastChevrons(out) {
         out.push({ x: p.x, z: p.z, w: 1.2, d: 12, ry: yaw - 0.7 });
     }
 }
+/** Double yellow taxiway edge lines that follow the junction fillets (State practice). */
+function offsetPolyline(pts, normals, d) {
+    return pts.map((p, i) => ({ x: p.x + normals[i].x * d, z: p.z + normals[i].z * d }));
+}
 function taxiEdge(out) {
-    for (const tw of [TAXI_N, TAXI_S]) {
-        for (const side of [-1, 1]) {
-            const z = tw.z + side * (tw.width / 2 - 0.25);
-            paintXRun(out, tw.x0, tw.x1, z - 0.15, 0.15);
-            paintXRun(out, tw.x0, tw.x1, z + 0.15, 0.15);
-        }
-    }
-    for (const link of LINKS) {
-        const taxi = linkTaxi(link);
-        const zEnd = link.side * 30; // stop at the runway edge, not inside the side stripe
-        for (const side of [-1, 1]) {
-            const x = link.x + side * (TAXI_WIDTH / 2 - 0.25);
-            paintPolyline(out, [{ x: x - 0.15, z: taxi.z }, { x: x - 0.15, z: zEnd }], 0.15);
-            paintPolyline(out, [{ x: x + 0.15, z: taxi.z }, { x: x + 0.15, z: zEnd }], 0.15);
+    for (const e of taxiwayEdges()) {
+        for (const off of [0.1, 0.4]) {
+            const line = offsetPolyline(e.pts, e.normals, off);
+            if (!e.curved) {
+                // split long straights into ≤40 m boxes
+                const [a0, b0] = line;
+                const zLim = RWY_0927.width / 2 + 1;
+                const clampZ = (q) => (Math.abs(q.z) < zLim ? { x: q.x, z: Math.sign(q.z) * zLim } : q);
+                const a = clampZ(a0);
+                const b = clampZ(b0);
+                const L = Math.hypot(b.x - a.x, b.z - a.z);
+                const n = Math.max(1, Math.ceil(L / 40));
+                const seg = [];
+                for (let k = 0; k <= n; k++)
+                    seg.push({ x: a.x + ((b.x - a.x) * k) / n, z: a.z + ((b.z - a.z) * k) / n });
+                paintPolyline(out, seg, 0.15);
+            }
+            else {
+                // Never paint yellow on or against the runway: stop ≥ 1 m outside the runway edge.
+                let piece = [];
+                for (const q of line) {
+                    if (Math.abs(q.z) < RWY_0927.width / 2 + 1) {
+                        if (piece.length > 1)
+                            paintPolyline(out, piece, 0.15);
+                        piece = [];
+                        continue;
+                    }
+                    piece.push(q);
+                }
+                if (piece.length > 1)
+                    paintPolyline(out, piece, 0.15);
+            }
         }
     }
 }
+/**
+ * Intermediate holding position marking (Annex 14 Vol I 5.2.11): a single broken yellow
+ * line ACROSS taxiway N. Dash 1 m / gap 1 m, width 0.3 m (schematic).
+ */
+export const IHP_X = -800;
 function intermediateHold(out) {
-    for (let i = -4; i <= 4; i++) {
-        out.push({ x: -800 + i * 2.4, z: TAXI_N.z, w: 1.4, d: 0.3, ry: 0 });
+    const half = TAXI_WIDTH / 2 - 0.6;
+    for (let z = -half + 0.5; z <= half - 0.5 + 1e-6; z += 2) {
+        out.push({ x: IHP_X, z: TAXI_N.z + z, w: 0.3, d: 1, ry: 0 });
     }
 }
+/** Information marking "N": placed clear of the N1 junction curves, beside the centre line. */
+export const INFO_N_POS = { x: TAXI_N1.x + 75, z: TAXI_N.z - 5 };
 function infoPaint(out) {
-    const x = TAXI_N1.x + 40;
-    const z = TAXI_N.z;
-    out.push({ x: x - 1.6, z, w: 0.7, d: 4.5, ry: Math.PI / 2 });
-    out.push({ x: x + 1.6, z, w: 0.7, d: 4.5, ry: Math.PI / 2 });
-    out.push({ x, z, w: 0.7, d: 3.6, ry: Math.PI / 4 });
+    const { x, z } = INFO_N_POS;
+    // Reads for an aircraft taxiing east: strokes along +x, separated across the taxiway.
+    out.push({ x, z: z - 1.6, w: 0.7, d: 4.5, ry: Math.PI / 2 });
+    out.push({ x, z: z + 1.6, w: 0.7, d: 4.5, ry: Math.PI / 2 });
+    out.push({ x, z, w: 0.7, d: Math.hypot(4.5, 3.2), ry: Math.atan2(-4.5, 3.2) });
 }
 function mandatoryPaint(outRed, outWhite) {
     outRed.push({ x: TAXI_N1.x, z: -82, w: 16, d: 6, ry: 0, y: 0.025 });

@@ -6,7 +6,7 @@ import { FEATURE_BY_ID, nearestFeature, pickFeature } from "./catalog";
 import { input } from "./input";
 import { useLab } from "./store";
 import { INSPECT_START, WALK_START, RWY_0927, WALK_SPEED, TAXI_N, TAXI_S, TAXI_WIDTH, LINKS, APRON_S, APRON_N, rwyPos, headingVec, physicalAlong, linkTaxi } from "./world";
-import { FILLET_R } from "./taxiways";
+import { junctionGeometry } from "./junctions";
 export function SceneLighting() {
     const lighting = useLab((s) => s.lighting);
     const { scene } = useThree();
@@ -55,17 +55,19 @@ export function Ground() {
       <PhysicalOverlays />
     </group>);
 }
-function FilletPad({ x, z, radius, from, to }) {
+function FilletShape({ polygon }) {
     const geo = useMemo(() => {
         const shape = new THREE.Shape();
-        shape.moveTo(0, 0);
-        shape.absarc(0, 0, radius, from, to, false);
-        shape.lineTo(0, 0);
+        // Shape XY → rotateX(−90°) → world (x, −y): so feed y = −z.
+        shape.moveTo(polygon[0].x, -polygon[0].z);
+        for (let i = 1; i < polygon.length; i++)
+            shape.lineTo(polygon[i].x, -polygon[i].z);
+        shape.closePath();
         const g = new THREE.ShapeGeometry(shape);
         g.rotateX(-Math.PI / 2);
         return g;
-    }, [radius, from, to]);
-    return (<mesh geometry={geo} position={[x, 0.007, z]} receiveShadow>
+    }, [polygon]);
+    return (<mesh geometry={geo} position={[0, 0.007, 0]} receiveShadow>
       <meshLambertMaterial color="#323436"/>
     </mesh>);
 }
@@ -91,28 +93,11 @@ function Pavement() {
       {LINKS.map((link) => {
             const taxi = linkTaxi(link);
             const depth = Math.abs(taxi.z);
-            const hw = TAXI_WIDTH / 2;
-            const leads = link.leads ?? "both";
-            const westOk = leads !== "east";
-            const eastOk = leads !== "west";
             return (<group key={link.id}>
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[link.x, 0.007, taxi.z / 2]} receiveShadow>
             <planeGeometry args={[TAXI_WIDTH, depth]}/>
             <meshLambertMaterial color={taxiColor}/>
           </mesh>
-          {/* Runway-edge and parallel-junction fillets. Local +Y after rotateX(-90) is world −Z (north).
-              End connectors omit the outboard fillet so pavement stays flush with the runway end. */}
-          {link.side < 0 ? (<>
-            {westOk ? <FilletPad x={link.x - hw} z={-30} radius={FILLET_R} from={Math.PI} to={Math.PI / 2}/> : null}
-            {eastOk ? <FilletPad x={link.x + hw} z={-30} radius={FILLET_R} from={0} to={Math.PI / 2}/> : null}
-            {westOk ? <FilletPad x={link.x - hw} z={taxi.z + hw} radius={FILLET_R} from={-Math.PI / 2} to={0}/> : null}
-            {eastOk ? <FilletPad x={link.x + hw} z={taxi.z + hw} radius={FILLET_R} from={-Math.PI / 2} to={-Math.PI}/> : null}
-          </>) : (<>
-            {westOk ? <FilletPad x={link.x - hw} z={30} radius={FILLET_R} from={Math.PI} to={-Math.PI / 2}/> : null}
-            {eastOk ? <FilletPad x={link.x + hw} z={30} radius={FILLET_R} from={0} to={-Math.PI / 2}/> : null}
-            {westOk ? <FilletPad x={link.x - hw} z={taxi.z - hw} radius={FILLET_R} from={Math.PI / 2} to={0}/> : null}
-            {eastOk ? <FilletPad x={link.x + hw} z={taxi.z - hw} radius={FILLET_R} from={Math.PI / 2} to={Math.PI}/> : null}
-          </>)}
         </group>);
         })}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[APRON_S.x, 0.005, APRON_S.z]} receiveShadow>
@@ -123,11 +108,9 @@ function Pavement() {
         <planeGeometry args={[APRON_N.width, APRON_N.depth]}/>
         <meshLambertMaterial color={taxiColor}/>
       </mesh>
-      {/* Fillets where the wide aprons T-join the parallels. */}
-      <FilletPad x={APRON_S.x - APRON_S.width / 2} z={TAXI_S.z + TAXI_WIDTH / 2} radius={FILLET_R} from={-Math.PI / 2} to={0}/>
-      <FilletPad x={APRON_S.x + APRON_S.width / 2} z={TAXI_S.z + TAXI_WIDTH / 2} radius={FILLET_R} from={-Math.PI / 2} to={-Math.PI}/>
-      <FilletPad x={APRON_N.x - APRON_N.width / 2} z={TAXI_N.z - TAXI_WIDTH / 2} radius={FILLET_R} from={Math.PI / 2} to={0}/>
-      <FilletPad x={APRON_N.x + APRON_N.width / 2} z={TAXI_N.z - TAXI_WIDTH / 2} radius={FILLET_R} from={Math.PI / 2} to={Math.PI}/>
+      {/* Junction fillets: taxiway/taxiway, taxiway/runway (sized from the code-F main-gear
+          track, Annex 14 3.9.3 / 3.9.6) and apron T-joins. See junctions.js. */}
+      {junctionGeometry().fillets.map((f, i) => <FilletShape key={i} polygon={f.polygon}/>)}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.015, 0]} receiveShadow>
         <planeGeometry args={[3448, 75]}/>
         <meshLambertMaterial color="#343230"/>

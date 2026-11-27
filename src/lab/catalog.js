@@ -224,7 +224,7 @@ export const FEATURES = [
             { label: "Width", value: "At least 0.15 m; 0.30 m where extra conspicuity is needed (lab draws 0.30 m)" },
             { label: "Taxiway width", value: "23 m (schematic)" },
         ],
-        notes: "Parallel taxiway N runs the full 3448 m paved length and terminates into end connectors N09 (RWY 09 physical end) and N27 (RWY 27 physical end). Midfield connectors N1–N4 plus those end links join it to the runway with fillets and curved lead-on/lead-off centre lines. On the runway each lead line curves (R 36 m) to a point 1.2 m to the taxiway side of the runway centre line and then runs parallel to it, so it never lies on the white runway centre line (offset schematic/approximate). Yellow paint never touches white runway paint: Annex 14 Vol I 5.2.1.3 (Standard) — at a runway/taxiway intersection the runway markings are displayed and the taxiway markings interrupted (side stripes may be interrupted). The lab keeps a 1.5 m clear gap to threshold stripes and bar, designation, TDZ, aiming-point and displaced-threshold arrows (1.5 m follows State practice such as UK RA 3514, not an Annex figure). Consequences: N1/S1 leads are broken across the 300 m TDZ marks of RWY 09; the N4/S3 east leads end before the RWY 27 threshold stripes; and on the end links N09/S09/N27/S27 the parallel run ends about 20 m past the tangency point, before the first displaced-threshold arrow, instead of the 60 m of Recommendation 5.2.8.7 (a Recommendation yields to the Standard). A north MRO pad overlaps N (no gap). Layout of the stubs is schematic/approximate.",
+        notes: "Parallel taxiway N runs the full 3448 m paved length and terminates into end connectors N09 (RWY 09 physical end) and N27 (RWY 27 physical end). Midfield connectors N1–N4 plus those end links join it to the runway with fillets and curved lead-on/lead-off centre lines. At every junction with the parallel the straight through-lines are kept and curved turn lines (R 45 m, schematic) are added for each turning movement (Annex 14 Vol I 5.2.8.6); fillets are sized from a code-F main-gear track (see “Taxiway junctions and fillets”). On the runway each lead line curves (R 36 m) to a point 1.2 m to the taxiway side of the runway centre line and then runs parallel to it, so it never lies on the white runway centre line (offset schematic/approximate). Yellow paint never touches white runway paint: Annex 14 Vol I 5.2.1.3 (Standard) — at a runway/taxiway intersection the runway markings are displayed and the taxiway markings interrupted (side stripes may be interrupted). The lab keeps a 1.5 m clear gap to threshold stripes and bar, designation, TDZ, aiming-point and displaced-threshold arrows (1.5 m follows State practice such as UK RA 3514, not an Annex figure). Consequences: N1/S1 leads are broken across the 300 m TDZ marks of RWY 09; the N4/S3 east leads end before the RWY 27 threshold stripes; and on the end links N09/S09/N27/S27 the parallel run ends about 20 m past the tangency point, before the first displaced-threshold arrow, instead of the 60 m of Recommendation 5.2.8.7 (a Recommendation yields to the Standard). A north MRO pad overlaps N (no gap). Layout of the stubs is schematic/approximate.",
         footprint: { x: 0, z: TAXI_N.z, headingDeg: 90, length: TAXI_N.x1 - TAXI_N.x0, width: 0.3 },
     },
     {
@@ -238,7 +238,7 @@ export const FEATURES = [
             { label: "Style", value: "Continuous yellow" },
             { label: "Width", value: "0.30 m" },
         ],
-        notes: "S runs the full paved length between 09/27 and the T2 massing, terminating into end connectors S09 and S27. Midfield connectors S1–S3 use the same lead-on/lead-off geometry as the north side. The T2 apron overlaps S so taxiway pavement is continuous into the stand area (schematic/approximate).",
+        notes: "S runs the full paved length between 09/27 and the T2 massing, terminating into end connectors S09 and S27. Midfield connectors S1–S3 use the same lead-on/lead-off geometry and junction turn lines/fillets as the north side; S2 continues straight across S into the T2 apron, so that crossing has four turn lines (two toward the runway, two into the apron). The T2 apron overlaps S so taxiway pavement is continuous into the stand area (schematic/approximate).",
         footprint: { x: 0, z: TAXI_S.z, headingDeg: 90, length: TAXI_S.x1 - TAXI_S.x0, width: 0.3 },
     },
     {
@@ -315,9 +315,11 @@ export const FEATURES = [
         icao: "Annex 14 Vol I §5.3.18 Taxiway edge lights (9th ed., 2022; some 8th-ed. prints number this §5.3.17)",
         dimensions: [
             { label: "Colour", value: "Blue" },
-            { label: "Spacing (schematic)", value: "60 m" },
+            { label: "Spacing on straights", value: "≤ 60 m (5.3.18.3)" },
+            { label: "Spacing on fillets / curves (schematic)", value: "7.5 m — 5.3.18.3 asks for closer spacing on curves; ADM Part 4 has the guidance table" },
+            { label: "Position", value: "At the pavement edge, following the fillets (5.3.18.6: at the edge or ≤ 3 m outside)" },
         ],
-        notes: "Blue is reserved for taxiway edge — never used on the runway. Toggle the Lights layer to hide them.",
+        notes: "Blue is reserved for taxiway edge — never used on the runway: no edge light within 2 m of the runway edge, none across junction mouths, and none on pavement. Elevated stop-bar lights and runway guard lights sit just outside the widened stub edge. Toggle the Lights layer to hide them.",
         footprint: { x: 0, z: TAXI_N.z, headingDeg: 90, length: 3400, width: 23 },
     },
     {

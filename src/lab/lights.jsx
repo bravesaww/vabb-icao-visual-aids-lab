@@ -3,6 +3,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLab } from "./store";
 import { ILS_ALT_ZONE_M, apronSpurPoints, connectorPaths } from "./taxiways";
+import { junctionGeometry, stubHalfWidth, taxiwayEdges } from "./junctions";
 import { RWY_0927, TAXI_N, TAXI_S, LINKS, TAXI_WIDTH, APRON_SPURS, holdOf, rwyPos, headingVec, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, linkTaxi } from "./world";
 
 const C = {
@@ -162,15 +163,19 @@ function tdzLights(rwy, endName, sysBuckets) {
 }
 
 function stopAndGuard(sysBuckets, wig) {
+    // Stop bar inset lights at 3 m across the full (fillet-widened) taxiway width; elevated
+    // stop-bar lights and runway guard lights just outside the pavement edge.
     for (const link of LINKS) {
         const hold = holdOf(link);
-        for (let i = -3; i <= 3; i++) {
-            push(sysBuckets, { x: hold.x + i * 3, y: 0.08, z: hold.z, color: C.red, r: 0.16, sys: "stopBars" });
+        const hwW = stubHalfWidth(link, hold.z, -1);
+        const hwE = stubHalfWidth(link, hold.z, 1);
+        for (let x = -Math.floor((hwW - 0.75) / 3) * 3; x <= hwE - 0.75; x += 3) {
+            push(sysBuckets, { x: hold.x + x, y: 0.08, z: hold.z, color: C.red, r: 0.16, sys: "stopBars" });
         }
-        push(sysBuckets, { x: hold.x - 12, y: 0.7, z: hold.z, color: C.red, r: 0.22, sys: "stopBars" });
-        push(sysBuckets, { x: hold.x + 12, y: 0.7, z: hold.z, color: C.red, r: 0.22, sys: "stopBars" });
-        wig.push({ x: hold.x - 14, y: 1.2, z: hold.z, color: C.yellow, r: 0.3, sys: "stopBars" });
-        wig.push({ x: hold.x + 14, y: 1.2, z: hold.z, color: C.yellow, r: 0.3, sys: "stopBars" });
+        push(sysBuckets, { x: hold.x - hwW - 1, y: 0.7, z: hold.z, color: C.red, r: 0.22, sys: "stopBars" });
+        push(sysBuckets, { x: hold.x + hwE + 1, y: 0.7, z: hold.z, color: C.red, r: 0.22, sys: "stopBars" });
+        wig.push({ x: hold.x - hwW - 3, y: 1.2, z: hold.z, color: C.yellow, r: 0.3, sys: "stopBars" });
+        wig.push({ x: hold.x + hwE + 3, y: 1.2, z: hold.z, color: C.yellow, r: 0.3, sys: "stopBars" });
     }
 }
 
@@ -216,27 +221,73 @@ function sampleAlong(pts, spacing) {
     return out;
 }
 
-function taxiLamps(sysBuckets) {
-    for (const tw of [TAXI_N, TAXI_S]) {
-        for (let x = tw.x0; x <= tw.x1; x += 60) {
-            push(sysBuckets, { x, y: 0.35, z: tw.z - tw.width / 2, color: C.blue, r: 0.16, sys: "taxiway" });
-            push(sysBuckets, { x, y: 0.35, z: tw.z + tw.width / 2, color: C.blue, r: 0.16, sys: "taxiway" });
+function pointsAlongPolyline(pts, spacing, includeEnds = true) {
+    // Uniform spacing ≤ `spacing` along a polyline, both ends included.
+    let L = 0;
+    for (let i = 1; i < pts.length; i++)
+        L += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
+    if (L < 0.5)
+        return includeEnds ? [pts[0]] : [];
+    const n = Math.max(1, Math.ceil(L / spacing));
+    const out = [];
+    let seg = 1;
+    let acc = 0;
+    for (let k = 0; k <= n; k++) {
+        if (!includeEnds && (k === 0 || k === n))
+            continue;
+        const target = (L * k) / n;
+        while (seg < pts.length - 1 && acc + Math.hypot(pts[seg].x - pts[seg - 1].x, pts[seg].z - pts[seg - 1].z) < target) {
+            acc += Math.hypot(pts[seg].x - pts[seg - 1].x, pts[seg].z - pts[seg - 1].z);
+            seg++;
         }
+        const a = pts[seg - 1];
+        const b = pts[seg];
+        const sl = Math.hypot(b.x - a.x, b.z - a.z) || 1e-6;
+        const f = Math.min(1, Math.max(0, (target - acc) / sl));
+        out.push({ x: a.x + (b.x - a.x) * f, z: a.z + (b.z - a.z) * f });
+    }
+    return out;
+}
+
+function taxiLamps(sysBuckets) {
+    // Blue edge lights (Annex 14 5.3.18): ≤ 60 m on straights, 7.5 m on fillet curves,
+    // at the pavement edge, never on pavement, never on the runway (≥ 2 m outside its edge).
+    const seen = new Set();
+    const blue = (p) => {
+        if (Math.abs(p.z) < RWY_0927.width / 2 + 2)
+            return;
+        const k = `${Math.round(p.x * 2)},${Math.round(p.z * 2)}`;
+        if (seen.has(k))
+            return;
+        seen.add(k);
+        push(sysBuckets, { x: p.x, y: 0.35, z: p.z, color: C.blue, r: 0.16, sys: "taxiway" });
+    };
+    for (const e of taxiwayEdges()) {
+        for (const p of pointsAlongPolyline(e.pts, e.curved ? 7.5 : 60))
+            blue(p);
+    }
+    for (const tw of [TAXI_N, TAXI_S]) {
         for (let x = tw.x0; x <= tw.x1; x += 30) {
             push(sysBuckets, { x, y: 0.06, z: tw.z, color: C.green, r: 0.12, sys: "taxiway" });
         }
     }
+    // Centre-line lights on the junction turn curves (5.3.17.14 / 5.3.17.15: 7.5 m on
+    // curves under 400 m radius). Inside the 150 m coded zone they alternate green/yellow
+    // with the perimeter (zone-boundary) lamp yellow; outside, green.
+    for (const t of junctionGeometry().turns) {
+        const pts = pointsAlongPolyline(t.pts, 7.5, false);
+        const inZone = pts.map((p) => Math.abs(p.z) <= ILS_ALT_ZONE_M);
+        // Points run from the parallel (index 0) toward the stub; the first in-zone lamp is
+        // the one at the zone boundary (perimeter), which must be yellow.
+        const k0 = inZone.indexOf(true);
+        pts.forEach((p, i) => {
+            let col = C.green;
+            if (k0 >= 0 && inZone[i])
+                col = (i - k0) % 2 === 0 ? C.yellow : C.green;
+            push(sysBuckets, { x: p.x, y: 0.06, z: p.z, color: col, r: 0.12, sys: "taxiway" });
+        });
+    }
     for (const link of LINKS) {
-        const taxi = linkTaxi(link);
-        // Blue stub edge lights stop at the runway edge (never on runway pavement).
-        const zA = taxi.z;
-        const zB = link.side * (RWY_0927.width / 2 + 2);
-        const z0 = Math.min(zA, zB);
-        const z1 = Math.max(zA, zB);
-        for (let z = z0; z <= z1 + 0.01; z += 20) {
-            push(sysBuckets, { x: link.x - TAXI_WIDTH / 2, y: 0.35, z, color: C.blue, r: 0.16, sys: "taxiway" });
-            push(sysBuckets, { x: link.x + TAXI_WIDTH / 2, y: 0.35, z, color: C.blue, r: 0.16, sys: "taxiway" });
-        }
         // Centre-line lights follow the offset lead line (LEAD_OFFSET_M clear of the runway CL).
         // §5.3.17: alternate green/yellow from the runway end of the lead line out to the
         // ILS critical area / strip edge; first (nearest runway CL) green, last yellow.
