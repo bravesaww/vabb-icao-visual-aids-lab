@@ -3,13 +3,15 @@ import {
   TAXI_N,
   TAXI_S,
   TAXI_N1,
+  TAXI_WIDTH,
+  APRON_S,
   HOLD_N1,
-  HOLD_N1_B,
   HOLD_CAT2,
   physicalAlong,
   fp,
   endFp,
 } from "./world";
+import { TAXI_SHOULDER_M } from "./junctions";
 
 function declared(rwy, endName) {
   const end = rwy.ends[endName];
@@ -212,19 +214,6 @@ export const EXTRA_FEATURES = [
     footprint: { x: HOLD_N1.x, z: HOLD_N1.z, headingDeg: 0, length: 4, width: 23 },
   },
   {
-    id: "mark.gable.n1",
-    title: "Yellow edge boards at Pattern A (reference diagram)",
-    kind: "sign",
-    location: "Taxiway edges at each Pattern A hold (illustrated at N1)",
-    purpose: "Short yellow vertical boards at the pavement edge beside the Pattern A hold, matching the ‘gable markers’ in the reference stop-bar diagram.",
-    icao: "Not specified in Annex 14 Volume I. (5.5.5 taxiway edge markers are retroreflective blue, and are a Recommendation for code 1 or 2 taxiways without edge lights.)",
-    dimensions: [
-      { label: "Height / size (lab)", value: "About 1.1 m tall, 0.32 m wide — small and schematic" },
-    ],
-    notes: "These boards are a teaching extra taken from the reference diagram, not an Annex 14 requirement. They are labelled as such here.",
-    footprint: { x: HOLD_N1.x, z: HOLD_N1.z, headingDeg: 0, length: 4, width: 28 },
-  },
-  {
     id: "light.reil.09",
     title: "REIL / RTIL threshold 09",
     kind: "light",
@@ -258,7 +247,7 @@ export const EXTRA_FEATURES = [
     id: "sign.loc.s",
     title: "Location sign S",
     kind: "sign",
-    location: "Taxiway S, south of 09/27",
+    location: "West of the T2 apron, just south of taxiway S (moved off the apron pavement)",
     purpose: "Yellow-on-black location sign identifying taxiway S.",
     icao: "Annex 14 Vol I §5.4.3 Location signs",
     dimensions: [
@@ -266,13 +255,13 @@ export const EXTRA_FEATURES = [
       { label: "Face", value: "Yellow on black" },
     ],
     notes: "Same colour rule as N and N1 — yellow inscription, black background.",
-    footprint: { x: 200, z: TAXI_S.z + 26, headingDeg: 90, length: 1.2, width: 2.0 },
+    footprint: { x: APRON_S.x - APRON_S.width / 2 - 26, z: TAXI_S.z + TAXI_WIDTH / 2 + TAXI_SHOULDER_M + 6, headingDeg: 90, length: 1.2, width: 2.0 },
   },
   {
     id: "sign.dest.t2",
     title: "Destination sign T2",
     kind: "sign",
-    location: "Taxiway S, pointing toward the Terminal 2 apron",
+    location: "East of the T2 apron, just south of taxiway S (moved off the apron pavement)",
     purpose: "Black-on-yellow destination information (terminal, cargo, apron, etc.).",
     icao: "Annex 14 Vol I §5.4.3 Information signs — destination signs",
     dimensions: [
@@ -280,7 +269,7 @@ export const EXTRA_FEATURES = [
       { label: "Face", value: "Black on yellow" },
     ],
     notes: "Destination signs use the same yellow information-sign face as direction signs, but name a facility rather than a taxiway.",
-    footprint: { x: 280, z: TAXI_S.z + 26, headingDeg: 90, length: 1.2, width: 3.6 },
+    footprint: { x: APRON_S.x + APRON_S.width / 2 + 26, z: TAXI_S.z + TAXI_WIDTH / 2 + TAXI_SHOULDER_M + 6, headingDeg: 90, length: 1.2, width: 3.6 },
   },
   {
     id: "sign.exit.n1",

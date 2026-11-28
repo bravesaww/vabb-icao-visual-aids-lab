@@ -2,7 +2,7 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLab } from "./store";
-import { TAXI_N, TAXI_S, TAXI_N1, LINKS, holdOf, runwayDesignationLegend, catHoldLegend, RWY_0927, thresholdAlong } from "./world";
+import { TAXI_N, TAXI_S, TAXI_N1, TAXI_WIDTH, LINKS, APRON_S, holdOf, runwayDesignationLegend, catHoldLegend, RWY_0927, thresholdAlong } from "./world";
 import { holdZ } from "./taxiways";
 import { stubHalfWidth, TAXI_SHOULDER_M } from "./junctions";
 function canvasTexture(draw, w = 512, h = 256) {
@@ -91,23 +91,8 @@ function HoldSigns({ link }) {
             </mesh>
             <SignFace text={cat} bg="#9b241c" fg="#f4f1ea" width={catW}/>
           </SignPost>
-          <GableMarkers x={link.x + sx * (stubHalfWidth(link, zA, sx) + 0.25)} z={zA} side={link.side}/>
         </group>);
         })}
-    </group>);
-}
-
-/** Yellow vertical boards at the Pattern A taxiway edges, as in the reference
- *  stop-bar diagram ("gable markers"). Not specified in Annex 14 (5.5.5 taxiway
- *  edge markers are blue and apply to code 1 or 2 taxiways without edge lights).
- *  Shown as a teaching extra from the reference; state practice. */
-function GableMarkers({ x, z, side }) {
-    const along = [ -1.6, -0.55, 0.55, 1.6 ];
-    return (<group>
-      {along.map((dz, i) => (<mesh key={i} position={[x, 0.55, z + side * 0.15 + dz]}>
-        <boxGeometry args={[0.08, 1.1, 0.32]}/>
-        <meshStandardMaterial color="#e0b43a" roughness={0.55} metalness={0.1}/>
-      </mesh>))}
     </group>);
 }
 
@@ -124,7 +109,7 @@ export function Signs() {
         </mesh>
         <SignFace text="NO ENTRY" bg="#9b241c" fg="#f4f1ea" width={3.6}/>
       </SignPost>
-      <SignPost position={[TAXI_N1.x, 0, TAXI_N.z - 16]} rotationY={Math.PI / 2}>
+      <SignPost position={[TAXI_N1.x, 0, TAXI_N.z - (TAXI_WIDTH / 2 + TAXI_SHOULDER_M + 3)]} rotationY={Math.PI / 2}>
         <mesh>
           <boxGeometry args={[5.0, 1.25, 0.12]}/>
           <meshStandardMaterial color="#e0b43a"/>
@@ -138,14 +123,14 @@ export function Signs() {
         </mesh>
         <SignFace text="N" bg="#111111" fg="#e0b43a" width={2.0}/>
       </SignPost>
-      <SignPost position={[200, 0, TAXI_S.z + 26]} rotationY={Math.PI / 2}>
+      <SignPost position={[APRON_S.x - APRON_S.width / 2 - 26, 0, TAXI_S.z + TAXI_WIDTH / 2 + TAXI_SHOULDER_M + 6]} rotationY={Math.PI / 2}>
         <mesh>
           <boxGeometry args={[2.2, 1.25, 0.12]}/>
           <meshStandardMaterial color="#111"/>
         </mesh>
         <SignFace text="S" bg="#111111" fg="#e0b43a" width={2.0}/>
       </SignPost>
-      <SignPost position={[280, 0, TAXI_S.z + 26]} rotationY={Math.PI / 2}>
+      <SignPost position={[APRON_S.x + APRON_S.width / 2 + 26, 0, TAXI_S.z + TAXI_WIDTH / 2 + TAXI_SHOULDER_M + 6]} rotationY={Math.PI / 2}>
         <mesh>
           <boxGeometry args={[3.8, 1.25, 0.12]}/>
           <meshStandardMaterial color="#e0b43a"/>

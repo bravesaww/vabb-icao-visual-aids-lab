@@ -3,7 +3,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLab } from "./store";
 import { ILS_ALT_ZONE_M, apronSpurPoints, connectorPaths, holdZ } from "./taxiways";
-import { apronFreeEdges, junctionGeometry, stubHalfWidth, taxiwayEdges } from "./junctions";
+import { apronFreeEdges, junctionGeometry, stubHalfWidth, taxiwayEdges, TAXI_SHOULDER_M } from "./junctions";
 import { RWY_0927, TAXI_N, TAXI_S, LINKS, TAXI_WIDTH, APRON_SPURS, HOLD_DIST_A, HOLD_DIST_B, holdOf, rwyPos, headingVec, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, linkTaxi } from "./world";
 
 const C = {
@@ -180,8 +180,8 @@ function stopAndGuard(sysBuckets, rgl, clicks) {
             for (let x = -Math.floor((hwW - 0.75) / 3) * 3; x <= hwE - 0.75; x += 3) {
                 push(sysBuckets, { x: link.x + x, y: 0.06, z, color: C.red, r: 0.08, sys: "stopBars", fit: "inset", hold: which, linkId: link.id });
             }
-            push(sysBuckets, { x: link.x - hwW - 3.2, y: 0.45, z, color: C.red, r: 0.06, sys: "stopBars", fit: "elevated", hold: which, linkId: link.id });
-            push(sysBuckets, { x: link.x + hwE + 3.2, y: 0.45, z, color: C.red, r: 0.06, sys: "stopBars", fit: "elevated", hold: which, linkId: link.id });
+            push(sysBuckets, { x: link.x - hwW - TAXI_SHOULDER_M - 1.8, y: 0.45, z, color: C.red, r: 0.06, sys: "stopBars", fit: "elevated", hold: which, linkId: link.id });
+            push(sysBuckets, { x: link.x + hwE + TAXI_SHOULDER_M + 1.8, y: 0.45, z, color: C.red, r: 0.06, sys: "stopBars", fit: "elevated", hold: which, linkId: link.id });
             clicks.push({ x: link.x, z, w: hwW + hwE, which, linkId: link.id });
         }
         // Config A: one unit (a pair of yellow lights) on each side, on the holding
@@ -189,8 +189,8 @@ function stopAndGuard(sysBuckets, rgl, clicks) {
         const zA = holdZ(link, "A") + link.side * 1.4;
         const hwW = stubHalfWidth(link, zA, -1);
         const hwE = stubHalfWidth(link, zA, 1);
-        rgl.push({ x: link.x - hwW - 2.2, z: zA, side: link.side, linkId: link.id });
-        rgl.push({ x: link.x + hwE + 2.2, z: zA, side: link.side, linkId: link.id });
+        rgl.push({ x: link.x - hwW - TAXI_SHOULDER_M - 1.2, z: zA, side: link.side, linkId: link.id });
+        rgl.push({ x: link.x + hwE + TAXI_SHOULDER_M + 1.2, z: zA, side: link.side, linkId: link.id });
     }
 }
 
@@ -479,11 +479,14 @@ function PapiUnit({ position, headingDeg, angleDeg, lit }) {
     </group>);
 }
 
+/** Annex 14 Vol I 5.3.5.24 / 5.3.5.28 / Figure 5-19: four units on the left side
+ *  unless impracticable; inboard unit 15 m (±1 m) from the runway edge, 9 m (±1 m)
+ *  spacing (code 3/4). D1 is end.papiSitingM (aiming-point origin / schematic). */
 function PapiRow({ rwy, endName, lit }) {
     const end = rwy.ends[endName];
     const ls = landingSign(end);
     const thr = thresholdAlong(rwy, endName);
-    const along = thr + ls * (end.papiSitingM || 300);
+    const along = thr + ls * (end.papiSitingM || 400);
     const sideSign = end.papiSide === "right" ? ls : -ls;
     const inboard = sideSign * (rwy.width / 2 + 15);
     const angles = [end.papiDeg - 0.5, end.papiDeg - 0.17, end.papiDeg + 0.17, end.papiDeg + 0.5];
