@@ -50,6 +50,20 @@ export const OMGWS_M = 8.95;
 export const WHEEL_CLEARANCE_M = 3;
 /** Simple concave fillet radius where aprons T-join a parallel taxiway (schematic). */
 export const APRON_FILLET_R = 22;
+/**
+ * Paved runway shoulder width each side. AIP India VABB (2017 extract) publishes 7.5 m,
+ * giving an overall width of 75 m. Annex 14 3.2.2 (Recommendation) asks for an overall
+ * width of not less than 60 m for code D/E (already met by the 60 m runway) and 75 m
+ * for code F with four or more engines.
+ */
+export const RWY_SHOULDER_M = 7.5;
+/**
+ * Paved taxiway shoulder width each side. The load-bearing taxiway is 23 m (the 3.9.4
+ * Recommendation for OMGWS 9–15 m / code E–F), so 7.5 m shoulders give the 38 m overall
+ * width of 3.10.1 for code letter E. (Code C only requires 25 m overall.) Schematic.
+ */
+export const TAXI_SHOULDER_M = 7.5;
+
 
 const HW = TAXI_WIDTH / 2;
 const RWY_EDGE = RWY_0927.width / 2;
@@ -507,4 +521,97 @@ export function stubHalfWidth(link, z, sx) {
         }
     }
     return HW;
+}
+
+
+/** Runway-shoulder rectangles with a gap at each connector mouth. */
+export function runwayShoulderBands() {
+    const half = RWY_0927.width / 2;
+    const xL = TAXI_N.x0;
+    const xR = TAXI_N.x1;
+    const bands = [];
+    for (const side of [-1, 1]) {
+        const holes = [];
+        for (const link of LINKS) {
+            if (link.side !== side)
+                continue;
+            const zEdge = side * half;
+            const w = stubHalfWidth(link, zEdge, -1);
+            const e = stubHalfWidth(link, zEdge, 1);
+            holes.push([link.x - w - 0.6, link.x + e + 0.6]);
+        }
+        for (const [a, b] of subtractIntervals(xL, xR, holes))
+            bands.push({
+                side,
+                x: (a + b) / 2,
+                z: side * (half + RWY_SHOULDER_M / 2),
+                length: b - a,
+                width: RWY_SHOULDER_M,
+            });
+    }
+    return bands;
+}
+
+/**
+ * Shoulder polygons (outward from each taxiway edge by TAXI_SHOULDER_M).
+ * Vertices on the runway pavement are dropped so the shoulder stops at the runway edge.
+ */
+export function taxiwayShoulderPolys() {
+    const half = RWY_0927.width / 2;
+    const polys = [];
+    const flush = (run) => {
+        if (run.length < 2)
+            return;
+        const inn = run.map((r) => r.i);
+        const out = run.map((r) => r.o);
+        polys.push([...inn, ...out.slice().reverse()]);
+    };
+    for (const e of taxiwayEdges()) {
+        const run = [];
+        for (let i = 0; i < e.pts.length; i++) {
+            const p = e.pts[i];
+            const n = e.normals[i];
+            if (Math.abs(p.z) < half - 0.05) {
+                flush(run);
+                run.length = 0;
+                continue;
+            }
+            run.push({
+                i: p,
+                o: { x: p.x - n.x * TAXI_SHOULDER_M, z: p.z - n.z * TAXI_SHOULDER_M },
+            });
+        }
+        flush(run);
+    }
+    return polys;
+}
+
+/** Free edges of the aprons (not the taxiway join) for shoulders and blue edge lights. */
+export function apronFreeEdges() {
+    const edges = [];
+    for (const [a, taxi, s] of [[APRON_S, TAXI_S, 1], [APRON_N, TAXI_N, -1]]) {
+        const x0 = a.x - a.width / 2;
+        const x1 = a.x + a.width / 2;
+        const zFar = a.z + s * (a.depth / 2);
+        const zJoinExact = taxi.z + s * (taxi.width / 2);
+        // far edge
+        edges.push({ pts: [v(x0, zFar), v(x1, zFar)], outward: v(0, s) });
+        // west and east edges, from the taxiway join out to the far side
+        edges.push({ pts: [v(x0, zJoinExact), v(x0, zFar)], outward: v(-1, 0) });
+        edges.push({ pts: [v(x1, zJoinExact), v(x1, zFar)], outward: v(1, 0) });
+    }
+    return edges;
+}
+
+export function apronShoulderPolys() {
+    const polys = [];
+    for (const e of apronFreeEdges()) {
+        const inn = e.pts;
+        const out = e.pts.map((p) => ({
+            x: p.x + e.outward.x * TAXI_SHOULDER_M,
+            z: p.z + e.outward.z * TAXI_SHOULDER_M,
+        }));
+        polys.push([...inn, ...out.slice().reverse()]);
+    }
+    return polys;
 }

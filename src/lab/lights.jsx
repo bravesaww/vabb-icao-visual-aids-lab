@@ -3,7 +3,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLab } from "./store";
 import { ILS_ALT_ZONE_M, apronSpurPoints, connectorPaths } from "./taxiways";
-import { junctionGeometry, stubHalfWidth, taxiwayEdges } from "./junctions";
+import { apronFreeEdges, junctionGeometry, stubHalfWidth, taxiwayEdges } from "./junctions";
 import { RWY_0927, TAXI_N, TAXI_S, LINKS, TAXI_WIDTH, APRON_SPURS, holdOf, rwyPos, headingVec, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, linkTaxi } from "./world";
 
 const C = {
@@ -260,15 +260,20 @@ function taxiLamps(sysBuckets) {
         if (seen.has(k))
             return;
         seen.add(k);
-        push(sysBuckets, { x: p.x, y: 0.35, z: p.z, color: C.blue, r: 0.16, sys: "taxiway" });
+        push(sysBuckets, { x: p.x, y: 0.35, z: p.z, color: C.blue, r: 0.06, sys: "taxiway", fit: "elevated" });
     };
     for (const e of taxiwayEdges()) {
         for (const p of pointsAlongPolyline(e.pts, e.curved ? 7.5 : 60))
             blue(p);
     }
+    // Apron edges (Annex 14 5.3.18.4: ≤ 60 m on an apron).
+    for (const e of apronFreeEdges()) {
+        for (const p of pointsAlongPolyline(e.pts, 60))
+            blue(p);
+    }
     for (const tw of [TAXI_N, TAXI_S]) {
         for (let x = tw.x0; x <= tw.x1; x += 30) {
-            push(sysBuckets, { x, y: 0.06, z: tw.z, color: C.green, r: 0.12, sys: "taxiway" });
+            push(sysBuckets, { x, y: 0.06, z: tw.z, color: C.green, r: 0.08, sys: "taxiway", fit: "inset" });
         }
     }
     // Centre-line lights on the junction turn curves (5.3.17.14 / 5.3.17.15: 7.5 m on
@@ -284,7 +289,7 @@ function taxiLamps(sysBuckets) {
             let col = C.green;
             if (k0 >= 0 && inZone[i])
                 col = (i - k0) % 2 === 0 ? C.yellow : C.green;
-            push(sysBuckets, { x: p.x, y: 0.06, z: p.z, color: col, r: 0.12, sys: "taxiway" });
+            push(sysBuckets, { x: p.x, y: 0.06, z: p.z, color: col, r: 0.08, sys: "taxiway", fit: "inset" });
         });
     }
     for (const link of LINKS) {
@@ -314,12 +319,12 @@ function taxiLamps(sysBuckets) {
                     col = C.yellow;
             }
             const nearCl = Math.abs(pt.z) < 4;
-            push(sysBuckets, { x: pt.x, y: 0.06, z: pt.z, color: col, r: 0.12, sys: "taxiway", ...(nearCl ? { cap: 2.5 } : {}) });
+            push(sysBuckets, { x: pt.x, y: 0.06, z: pt.z, color: col, r: 0.08, sys: "taxiway", fit: "inset", ...(nearCl ? { cap: 2.2 } : {}) });
         }
     }
     for (const spur of APRON_SPURS) {
         for (const pt of sampleAlong(apronSpurPoints(spur), 15)) {
-            push(sysBuckets, { x: pt.x, y: 0.06, z: pt.z, color: C.green, r: 0.12, sys: "taxiway" });
+            push(sysBuckets, { x: pt.x, y: 0.06, z: pt.z, color: C.green, r: 0.08, sys: "taxiway", fit: "inset" });
         }
     }
 }
@@ -476,6 +481,153 @@ function PapiRow({ rwy, endName, lit }) {
     </group>);
 }
 
+
+/** Small elevated taxiway-edge fitting: dark stem + blue lens, readable in daylight
+ *  without a large glow (lens is MeshBasicMaterial). Night adds a tight halo only. */
+function ElevatedEdgeFittings({ items, lit, lighting }) {
+    const stemRef = useRef(null);
+    const lensRef = useRef(null);
+    const glowRef = useRef(null);
+    const { camera } = useThree();
+    const stemGeo = useMemo(() => new THREE.CylinderGeometry(0.018, 0.022, 0.32, 6), []);
+    const lensGeo = useMemo(() => new THREE.SphereGeometry(0.055, 10, 8), []);
+    const glowGeo = useMemo(() => new THREE.SphereGeometry(1, 8, 6), []);
+    const stemMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#2a2c2e", roughness: 0.85, metalness: 0.2 }), []);
+    const lensMat = useMemo(() => new THREE.MeshBasicMaterial({
+        color: lit ? C.blue : HOUSING,
+        toneMapped: false,
+        fog: !lit,
+    }), [lit]);
+    const glowMat = useMemo(() => new THREE.MeshBasicMaterial({
+        color: C.blue,
+        toneMapped: false,
+        transparent: true,
+        opacity: lighting === "night" ? 0.32 : lighting === "dusk" ? 0.18 : 0.08,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        fog: false,
+    }), [lighting]);
+    const scratch = useMemo(() => new THREE.Vector3(), []);
+    useLayoutEffect(() => {
+        const dummy = new THREE.Object3D();
+        items.forEach((it, i) => {
+            dummy.position.set(it.x, 0.16, it.z);
+            dummy.scale.set(1, 1, 1);
+            dummy.updateMatrix();
+            if (stemRef.current)
+                stemRef.current.setMatrixAt(i, dummy.matrix);
+            dummy.position.set(it.x, 0.36, it.z);
+            dummy.updateMatrix();
+            if (lensRef.current)
+                lensRef.current.setMatrixAt(i, dummy.matrix);
+        });
+        if (stemRef.current) {
+            stemRef.current.instanceMatrix.needsUpdate = true;
+            stemRef.current.computeBoundingSphere();
+        }
+        if (lensRef.current) {
+            lensRef.current.instanceMatrix.needsUpdate = true;
+            lensRef.current.computeBoundingSphere();
+        }
+    }, [items]);
+    useFrame(() => {
+        if (!lit || !glowRef.current)
+            return;
+        const dummy = new THREE.Object3D();
+        const night = lighting !== "day";
+        const k = lighting === "night" ? 0.0012 : lighting === "dusk" ? 0.0008 : 0.00035;
+        const maxMul = lighting === "night" ? 4 : lighting === "dusk" ? 3 : 1.6;
+        items.forEach((it, i) => {
+            const dist = camera.position.distanceTo(scratch.set(it.x, it.y, it.z));
+            const r = Math.min(0.055 * maxMul, Math.max(0.09, k * dist));
+            dummy.position.set(it.x, 0.36, it.z);
+            dummy.scale.setScalar(night ? r : 0.09);
+            dummy.updateMatrix();
+            glowRef.current.setMatrixAt(i, dummy.matrix);
+        });
+        glowRef.current.instanceMatrix.needsUpdate = true;
+    });
+    if (items.length === 0)
+        return null;
+    return (<>
+      <instancedMesh ref={stemRef} args={[stemGeo, stemMat, items.length]} frustumCulled={false} castShadow={false}/>
+      <instancedMesh ref={lensRef} args={[lensGeo, lensMat, items.length]} frustumCulled={false}/>
+      {lit ? <instancedMesh ref={glowRef} args={[glowGeo, glowMat, items.length]} frustumCulled={false}/> : null}
+    </>);
+}
+
+/** Flush taxiway centre-line lamp: dark ring + self-lit lens, small at all distances. */
+function InsetTaxiLamps({ items, color, lit, lighting }) {
+    const ringRef = useRef(null);
+    const lensRef = useRef(null);
+    const glowRef = useRef(null);
+    const { camera } = useThree();
+    const ringGeo = useMemo(() => new THREE.CylinderGeometry(0.11, 0.11, 0.02, 10), []);
+    const lensGeo = useMemo(() => new THREE.CylinderGeometry(0.07, 0.07, 0.025, 10), []);
+    const glowGeo = useMemo(() => new THREE.SphereGeometry(1, 8, 6), []);
+    const ringMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#1a1c1e", roughness: 0.7, metalness: 0.4 }), []);
+    const lensMat = useMemo(() => new THREE.MeshBasicMaterial({
+        color: lit ? color : HOUSING,
+        toneMapped: false,
+        fog: !lit,
+    }), [color, lit]);
+    const glowMat = useMemo(() => new THREE.MeshBasicMaterial({
+        color,
+        toneMapped: false,
+        transparent: true,
+        opacity: lighting === "night" ? 0.28 : lighting === "dusk" ? 0.16 : 0.1,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        fog: false,
+    }), [color, lighting]);
+    const scratch = useMemo(() => new THREE.Vector3(), []);
+    useLayoutEffect(() => {
+        const dummy = new THREE.Object3D();
+        items.forEach((it, i) => {
+            dummy.position.set(it.x, 0.04, it.z);
+            dummy.updateMatrix();
+            if (ringRef.current)
+                ringRef.current.setMatrixAt(i, dummy.matrix);
+            dummy.position.set(it.x, 0.055, it.z);
+            dummy.updateMatrix();
+            if (lensRef.current)
+                lensRef.current.setMatrixAt(i, dummy.matrix);
+        });
+        if (ringRef.current) {
+            ringRef.current.instanceMatrix.needsUpdate = true;
+            ringRef.current.computeBoundingSphere();
+        }
+        if (lensRef.current) {
+            lensRef.current.instanceMatrix.needsUpdate = true;
+            lensRef.current.computeBoundingSphere();
+        }
+    }, [items]);
+    useFrame(() => {
+        if (!lit || !glowRef.current)
+            return;
+        const dummy = new THREE.Object3D();
+        const k = lighting === "night" ? 0.0011 : lighting === "dusk" ? 0.0007 : 0.0003;
+        const maxR = lighting === "night" ? 0.28 : lighting === "dusk" ? 0.18 : 0.1;
+        items.forEach((it, i) => {
+            const dist = camera.position.distanceTo(scratch.set(it.x, it.y, it.z));
+            const cap = it.cap ?? Infinity;
+            const r = Math.min(maxR, cap * 0.08, Math.max(0.08, k * dist));
+            dummy.position.set(it.x, 0.07, it.z);
+            dummy.scale.setScalar(r);
+            dummy.updateMatrix();
+            glowRef.current.setMatrixAt(i, dummy.matrix);
+        });
+        glowRef.current.instanceMatrix.needsUpdate = true;
+    });
+    if (items.length === 0)
+        return null;
+    return (<>
+      <instancedMesh ref={ringRef} args={[ringGeo, ringMat, items.length]} frustumCulled={false}/>
+      <instancedMesh ref={lensRef} args={[lensGeo, lensMat, items.length]} frustumCulled={false}/>
+      {lit ? <instancedMesh ref={glowRef} args={[glowGeo, glowMat, items.length]} frustumCulled={false}/> : null}
+    </>);
+}
+
 const COLOR_KEYS = ["white", "yellow", "red", "green", "blue"];
 
 /** Auto direction of operation: looking east = RWY 09 traffic, looking west = RWY 27. */
@@ -504,6 +656,7 @@ export function Lights() {
     const opDirection = useLab((s) => s.opDirection);
     const viewDirection = useLab((s) => s.viewDirection);
     const dir = opDirection === "auto" ? viewDirection : opDirection;
+    const litTaxi = lampsOn && lampSystems.taxiway !== false;
     const built = useMemo(() => {
         const sys = {};
         const rabbit = [];
@@ -536,7 +689,12 @@ export function Lights() {
       {renderGroup(built.sys.edge, "edge")}
       {renderGroup(built.sys.centreLine, "centreLine")}
       {renderGroup(built.sys.tdz, "tdz")}
-      {renderGroup(built.sys.taxiway, "taxiway")}
+      {sysOn("taxiway") ? (<>
+        <ElevatedEdgeFittings items={built.sys.taxiway?.blue ?? []} lit={litTaxi} lighting={lighting}/>
+        {COLOR_KEYS.filter((k) => k !== "blue").map((k) => (
+          <InsetTaxiLamps key={`taxi-${k}-${built.sys.taxiway?.[k]?.length ?? 0}`} items={(built.sys.taxiway?.[k] ?? []).filter((it) => it.fit !== "elevated")} color={C[k]} lit={litTaxi} lighting={lighting}/>
+        ))}
+      </>) : null}
       {renderGroup(built.sys.stopBars, "stopBars", <InstancedLamps items={built.wig} color={C.yellow} lit={sysOn("stopBars")} lighting={lighting} pulse={(t, i) => (Math.sin(t * Math.PI * 3 + i * Math.PI) > 0 ? 1.25 : 0.22)}/>)}
       {renderGroup(built.sys.approach, "approach", <>
         <InstancedLamps items={built.rabbit} color={C.white} lit={sysOn("approach")} lighting={lighting} pulse={(t, i) => {

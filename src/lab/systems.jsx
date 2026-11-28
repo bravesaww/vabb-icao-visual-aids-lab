@@ -6,7 +6,7 @@ import { FEATURE_BY_ID, nearestFeature, pickFeature } from "./catalog";
 import { input } from "./input";
 import { useLab } from "./store";
 import { INSPECT_START, WALK_START, RWY_0927, WALK_SPEED, TAXI_N, TAXI_S, TAXI_WIDTH, LINKS, APRON_S, APRON_N, rwyPos, headingVec, physicalAlong, linkTaxi } from "./world";
-import { junctionGeometry } from "./junctions";
+import { junctionGeometry, apronShoulderPolys, runwayShoulderBands, taxiwayShoulderPolys } from "./junctions";
 export function SceneLighting() {
     const lighting = useLab((s) => s.lighting);
     const { scene } = useThree();
@@ -55,7 +55,7 @@ export function Ground() {
       <PhysicalOverlays />
     </group>);
 }
-function FilletShape({ polygon }) {
+function FilletShape({ polygon, color = "#323436", y = 0.007 }) {
     const geo = useMemo(() => {
         const shape = new THREE.Shape();
         // Shape XY → rotateX(−90°) → world (x, −y): so feed y = −z.
@@ -67,8 +67,8 @@ function FilletShape({ polygon }) {
         g.rotateX(-Math.PI / 2);
         return g;
     }, [polygon]);
-    return (<mesh geometry={geo} position={[0, 0.007, 0]} receiveShadow>
-      <meshLambertMaterial color="#323436"/>
+    return (<mesh geometry={geo} position={[0, y, 0]} receiveShadow>
+      <meshLambertMaterial color={color}/>
     </mesh>);
 }
 
@@ -92,10 +92,9 @@ function Pavement() {
       </mesh>
       {LINKS.map((link) => {
             const taxi = linkTaxi(link);
-            const depth = Math.abs(taxi.z);
             return (<group key={link.id}>
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[link.x, 0.007, taxi.z / 2]} receiveShadow>
-            <planeGeometry args={[TAXI_WIDTH, depth]}/>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[link.x, 0.007, (taxi.z + link.side * 30) / 2]} receiveShadow>
+            <planeGeometry args={[TAXI_WIDTH, Math.abs(taxi.z) - 30]}/>
             <meshLambertMaterial color={taxiColor}/>
           </mesh>
         </group>);
@@ -111,10 +110,17 @@ function Pavement() {
       {/* Junction fillets: taxiway/taxiway, taxiway/runway (sized from a code-C A320 main-gear
           track, Annex 14 3.9.3 / 3.9.6) and apron T-joins. See junctions.js. */}
       {junctionGeometry().fillets.map((f, i) => <FilletShape key={i} polygon={f.polygon}/>)}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.015, 0]} receiveShadow>
-        <planeGeometry args={[3448, 75]}/>
-        <meshLambertMaterial color="#343230"/>
-      </mesh>
+      {/* Paved non-load-bearing shoulders: lighter than the load-bearing asphalt, flush
+          with it (Annex 14 3.2 / 3.10). The old 75 m under-plane is gone — it showed as
+          a dark patch along the runway edge at every join. */}
+      {runwayShoulderBands().map((b, i) => (
+        <mesh key={`rwy-sh-${i}`} rotation={[-Math.PI / 2, 0, 0]} position={[b.x, 0.003, b.z]} receiveShadow>
+          <planeGeometry args={[b.length, b.width]}/>
+          <meshLambertMaterial color="#5c574c"/>
+        </mesh>
+      ))}
+      {taxiwayShoulderPolys().map((poly, i) => <FilletShape key={`tx-sh-${i}`} polygon={poly} color="#5c574c" y={0.004}/>)}
+      {apronShoulderPolys().map((poly, i) => <FilletShape key={`ap-sh-${i}`} polygon={poly} color="#5c574c" y={0.004}/>)}
     </group>);
 }
 function ResaBox({ rwy, endName }) {
@@ -211,6 +217,9 @@ export function InspectRig() {
             },
             enter(mode = "inspect") {
                 useLab.getState().enter(mode);
+            },
+            setCatalogOpen(on) {
+                useLab.getState().setCatalogOpen(!!on);
             },
         };
         return () => {

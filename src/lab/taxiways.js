@@ -1,4 +1,4 @@
-import { HOLD_DIST_CAT2, LINKS, RWY_0927, TAXI_N, TAXI_S, headingVec, linkTaxi } from "./world";
+import { HOLD_DIST_CAT2, LINKS, RWY_0927, TAXI_N, TAXI_S, TAXI_WIDTH, linkTaxi } from "./world";
 import { distToMark, runwayObstacleMarks } from "./runwayPaint";
 
 /** Pavement fillet radius at stub/runway and stub/parallel junctions (schematic). */
@@ -172,31 +172,16 @@ export function connectorPaths(link) {
  * cross it (Annex 14 Vol I 5.2.1.3 permits interrupting side stripes), with the same
  * RWY_MARK_CLEARANCE_M either side so no yellow paint touches the white stripe.
  */
-export function sideStripeGaps(rwy = RWY_0927) {
-    const { fx, fz, rx, rz } = headingVec(rwy.heading);
-    const stripeAcross = rwy.width / 2 - 0.45;
-    const lim = 0.45 + RWY_MARK_CLEARANCE_M + TAXI_CL_HALF_W;
+export function sideStripeGaps(_rwy = RWY_0927) {
+    // Annex 14 5.2.1.3 (Standard) allows the runway side stripe to be interrupted at a
+    // runway/taxiway intersection. Open a gap for the full connector mouth (not just the
+    // 0.3 m lead line) so the white stripe does not cross the entrance.
     const gaps = [];
+    const clear = 1.5;
+    // Runway-corner fillets for the A320 are only ~1 m extra; 2 m covers them.
+    const mouth = TAXI_WIDTH / 2 + 2;
     for (const link of LINKS) {
-        const p = connectorPaths(link);
-        for (const piece of [...p.east, ...p.west]) {
-            for (const side of [1, -1]) {
-                let a0 = Infinity;
-                let a1 = -Infinity;
-                for (const pt of piece) {
-                    const dx = pt.x - rwy.center.x;
-                    const dz = pt.z - rwy.center.z;
-                    const along = dx * fx + dz * fz;
-                    const across = dx * rx + dz * rz;
-                    if (Math.abs(across - side * stripeAcross) < lim) {
-                        a0 = Math.min(a0, along);
-                        a1 = Math.max(a1, along);
-                    }
-                }
-                if (a1 >= a0)
-                    gaps.push({ side, a0: a0 - TAXI_CL_HALF_W - RWY_MARK_CLEARANCE_M, a1: a1 + TAXI_CL_HALF_W + RWY_MARK_CLEARANCE_M });
-            }
-        }
+        gaps.push({ side: link.side, a0: link.x - mouth - clear, a1: link.x + mouth + clear });
     }
     return gaps;
 }

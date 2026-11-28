@@ -192,7 +192,7 @@ export const FEATURES = [
             { label: "Runway width", value: "60 m" },
             { label: "Placement", value: "Outer edge approximately coinciding with the runway edge" },
         ],
-        notes: "White. The displaced sections keep side stripes — only landing is restricted, not pavement width. Where a taxiway lead line crosses the runway edge the side stripe is interrupted for a short gap (1.5 m clear either side of the yellow line) — Annex 14 Vol I 5.2.1.3 (Standard) allows runway side stripe markings to be interrupted at a runway/taxiway intersection; gap length schematic.",
+        notes: "White. The displaced sections keep side stripes — only landing is restricted, not pavement width. At each taxiway mouth the side stripe is interrupted across the full entrance (Annex 14 Vol I 5.2.1.3 Standard: runway side stripe markings may be interrupted at a runway/taxiway intersection). The 7.5 m paved shoulders sit outside the stripe.",
         footprint: fp(RWY_0927, 0, 0, 3448, 60),
     },
     {
@@ -318,8 +318,9 @@ export const FEATURES = [
             { label: "Spacing on straights", value: "≤ 60 m (5.3.18.3)" },
             { label: "Spacing on fillets / curves (schematic)", value: "7.5 m — 5.3.18.3 asks for closer spacing on curves; ADM Part 4 has the guidance table" },
             { label: "Position", value: "At the pavement edge, following the fillets (5.3.18.6: at the edge or ≤ 3 m outside)" },
+            { label: "Fitting (lab)", value: "Small elevated post with a blue lens, readable in daylight; tight halo at night" },
         ],
-        notes: "Blue is reserved for taxiway edge — never used on the runway: no edge light within 2 m of the runway edge, none across junction mouths, and none on pavement. Elevated stop-bar lights and runway guard lights sit just outside the widened stub edge. Toggle the Lights layer to hide them.",
+        notes: "Blue is reserved for taxiway edge — never used on the runway: no edge light within 2 m of the runway edge, none across junction mouths, and none on pavement. Apron edges are lit at ≤ 60 m (5.3.18.4). The Taxi system chip is on by default. Toggle the Lights layer or the Taxi chip to hide them.",
         footprint: { x: 0, z: TAXI_N.z, headingDeg: 90, length: 3400, width: 23 },
     },
     {
@@ -335,6 +336,7 @@ export const FEATURES = [
             { label: "First / last in the coded section", value: "First (nearest the runway CL) green as viewed from the runway; last (at the perimeter) yellow" },
             { label: "Spacing (schematic)", value: "30 m on parallels, 15 m on connectors / curves" },
             { label: "On the runway", value: "Follow the lead line 1.2 m off the runway CL — never on top of the runway CL lights (schematic offset); omitted wherever the painted lead line is interrupted or ends for white runway markings" },
+            { label: "Fitting (lab)", value: "Small inset ring and a self-lit green or yellow lens, kept small at all distances" },
         ],
         notes: "§5.3.17 codes exit taxiway centre-line lights green/yellow from near the runway centre line to the ILS critical/sensitive area or the inner edge of the strip (here the code-4 strip half-width of 150 m). Beyond that they are green. Geometry of the stubs is schematic/approximate.",
         footprint: { x: 0, z: TAXI_S.z, headingDeg: 90, length: 3200, width: 1 },

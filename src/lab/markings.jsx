@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { RWY_0927, TAXI_N, TAXI_S, TAXI_N1, TAXI_WIDTH, LINKS, APRON_SPURS, rwyPos, rwyYaw } from "./world";
 import { apronSpurPoints, connectorPaths, holdZ, sideStripeGaps } from "./taxiways";
-import { junctionGeometry, stubHalfWidth, taxiwayEdges } from "./junctions";
+import { RWY_SHOULDER_M, TAXI_SHOULDER_M, junctionGeometry, stubHalfWidth, taxiwayEdges } from "./junctions";
 import { digitSegs, DIGIT_W } from "./digits";
 import { centreline, zebra, designation, aiming, tdz, sideStripes, arrows } from "./runwayPaint";
 import { useLab } from "./store";
@@ -65,7 +65,29 @@ function taxiCL(out) {
     paintXRun(out, TAXI_S.x0, TAXI_S.x1, TAXI_S.z, w);
     for (const link of LINKS) {
         const paths = connectorPaths(link);
-        paintPolyline(out, paths.straight, w);
+        // Annex 14 5.2.8.10: the taxiway centre line is continuous except where it
+        // intersects a runway-holding position marking.
+        const hz = holdZ(link);
+        const towardRwy = -link.side;
+        const zA = hz + towardRwy * 1.9;
+        const zB = hz - towardRwy * 4.6;
+        const z0 = Math.min(zA, zB);
+        const z1 = Math.max(zA, zB);
+        const parts = [[], []];
+        for (const pt of paths.straight) {
+            if (pt.z <= z0)
+                parts[0].push(pt);
+            else if (pt.z >= z1)
+                parts[1].push(pt);
+        }
+        // close the cut with points exactly on the gap edges
+        const x = link.x;
+        if (parts[0].length)
+            parts[0].push({ x, z: z0 });
+        if (parts[1].length)
+            parts[1].unshift({ x, z: z1 });
+        paintPolyline(out, parts[0], w);
+        paintPolyline(out, parts[1], w);
         // Lead lines sit on runway pavement. They are pre-clipped (taxiways.js) so they never
         // touch white runway paint; they stay LEAD_OFFSET_M clear of the runway CL.
         for (const piece of [...paths.east, ...paths.west])
@@ -247,6 +269,36 @@ function buildWhite() {
     }
     return m;
 }
+/**
+ * Transverse yellow stripes on the non-load-bearing shoulder at each runway/taxiway
+ * intersection. Annex 14 7.2.3 Note points to ADM Doc 9157 Part 4 for additional
+ * transverse stripes at an intersection; the same device appears in State practice
+ * (FAA AC 150/5340-1, CAP 637). Spacing and length are schematic/approximate —
+ * this is not an Annex dimension.
+ */
+function shoulderStripes(out) {
+    const half = RWY_0927.width / 2;
+    for (const link of LINKS) {
+        const zEdge = link.side * half;
+        const w = stubHalfWidth(link, zEdge, -1);
+        const e = stubHalfWidth(link, zEdge, 1);
+        for (const sx of [-1, 1]) {
+            const x0 = sx < 0 ? link.x - w - 0.9 : link.x + e + 0.9;
+            for (let k = 0; k < 6; k++) {
+                const x = x0 + sx * (0.45 + k * 1.8);
+                const z = zEdge + link.side * (RWY_SHOULDER_M / 2);
+                out.push({ x, z, w: 0.9, d: RWY_SHOULDER_M - 0.5, ry: 0, y: 0.025 });
+            }
+            const xSh = link.x + sx * (TAXI_WIDTH / 2 + TAXI_SHOULDER_M / 2);
+            for (let k = 0; k < 4; k++) {
+                const z = zEdge + link.side * (1.2 + 0.45 + k * 1.8);
+                if (Math.abs(z) <= half + 0.2)
+                    continue;
+                out.push({ x: xSh, z, w: TAXI_SHOULDER_M - 0.5, d: 0.9, ry: 0, y: 0.025 });
+            }
+        }
+    }
+}
 function buildYellow() {
     const m = [];
     holdAllPatternA(m);
@@ -257,6 +309,7 @@ function buildYellow() {
     taxiEdge(m);
     intermediateHold(m);
     infoPaint(m);
+    shoulderStripes(m);
     return m;
 }
 function buildRed() {
