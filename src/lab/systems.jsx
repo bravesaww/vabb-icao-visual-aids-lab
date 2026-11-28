@@ -108,7 +108,7 @@ function Pavement() {
         <planeGeometry args={[APRON_N.width, APRON_N.depth]}/>
         <meshLambertMaterial color={taxiColor}/>
       </mesh>
-      {/* Junction fillets: taxiway/taxiway, taxiway/runway (sized from the code-F main-gear
+      {/* Junction fillets: taxiway/taxiway, taxiway/runway (sized from a code-C A320 main-gear
           track, Annex 14 3.9.3 / 3.9.6) and apron T-joins. See junctions.js. */}
       {junctionGeometry().fillets.map((f, i) => <FilletShape key={i} polygon={f.polygon}/>)}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.015, 0]} receiveShadow>

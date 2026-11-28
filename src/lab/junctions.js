@@ -5,8 +5,10 @@
  *
  * ICAO basis (Annex 14 Vol I, 9th ed.):
  *  - 3.9.3 (Standard): with the cockpit over the centre-line marking, the outer main wheel
- *    keeps a clearance to the taxiway edge — 4 m for OMGWS 9–15 m (code E/F) on curves
- *    when the wheel base is 18 m or more.
+ *    keeps a clearance to the taxiway edge. For OMGWS 6 m up to but not including 9 m the
+ *    table gives 3 m on straight portions (note a) and 3 m on curves when the wheel base
+ *    is less than 18 m (note b); 4 m on curves only when the wheel base is 18 m or more
+ *    (note c). An A320 (code C) has a wheel base of about 12.6 m, so 3 m applies.
  *  - 3.9.5 / 3.9.6 (Recommendations): curves and fillets designed so those clearances are
  *    kept; fillet design uses the aeroplane datum length (guidance: Doc 9157 ADM Part 2).
  *  - 5.2.8.6 (Recommendation): on a curve the centre line continues from the straight at
@@ -17,21 +19,35 @@
  *    curves; at the edge or not more than 3 m outside it.
  *
  * Fillet shapes are not drawn from a published VABB chart: they are computed by tracking
- * the main gear of a code-F design aeroplane (datum length / OMGWS below, approximate)
- * whose cockpit follows the curved centre line, then adding the 4 m clearance.
- * Everything here is schematic/approximate.
+ * the main gear of a code-C A320 (figures below, approximate) whose cockpit follows the
+ * curved centre line, then adding the 3 m clearance. Larger aeroplanes would need bigger
+ * fillets. The straight taxiway width stays 23 m (the 3.9.4 Recommendation for OMGWS
+ * 9–15 m / code E–F); a code-C straight width would be 15 m. Everything here is
+ * schematic/approximate.
  */
 import { APRON_N, APRON_S, APRON_SPURS, LINKS, RWY_0927, TAXI_N, TAXI_S, TAXI_WIDTH, linkTaxi } from "./world";
 import { LEAD_OFFSET_M, LEAD_R, leadArcPoints } from "./taxiways";
 
 /** Centre-line radius of the turn curves at taxiway/taxiway junctions (schematic). */
 export const TURN_R = 45;
-/** Code F design aeroplane (A380-class), approximate: cockpit → main-gear centre. */
-export const DATUM_LENGTH_M = 33;
-/** Outer main gear wheel span (A380-class ≈ 14.3 m), approximate. */
-export const OMGWS_M = 14.3;
-/** Annex 14 3.9.3: OMGWS 9–15 m, curved portion, wheel base ≥ 18 m → 4 m. */
-export const WHEEL_CLEARANCE_M = 4;
+/**
+ * Code C design aeroplane (A320-class), approximate: cockpit → main-gear centre.
+ * A320 wheel base (nose gear to main-gear geometric centre) is about 12.6 m; the
+ * cockpit sits a few metres ahead of the nose gear, so 16.5 m is used here.
+ */
+export const DATUM_LENGTH_M = 16.5;
+/** A320 wheel base, approximate (Annex 14 3.9.3 Note: nose gear to main-gear centre). */
+export const WHEEL_BASE_M = 12.6;
+/**
+ * Outer main gear wheel span, approximate: A320 main-gear track 7.59 m plus tyre
+ * width, taken as 8.95 m (still in the 6 m up to but not including 9 m band).
+ */
+export const OMGWS_M = 8.95;
+/**
+ * Annex 14 3.9.3: OMGWS 6 m up to but not including 9 m → 3 m on straight portions
+ * and 3 m on curves when the wheel base is less than 18 m (A320 ≈ 12.6 m).
+ */
+export const WHEEL_CLEARANCE_M = 3;
 /** Simple concave fillet radius where aprons T-join a parallel taxiway (schematic). */
 export const APRON_FILLET_R = 22;
 

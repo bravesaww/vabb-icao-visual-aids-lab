@@ -147,16 +147,16 @@ export const EXTRA_FEATURES = [
     kind: "marking",
     location: "Every connector / parallel junction (N1–N4, S1–S3, end links), the runway corners of each stub, and the apron joins",
     purpose:
-      "Curved yellow turn lines for each turning movement, with paved fillets so the main gear of a code-F aeroplane keeps its wheel clearance while the cockpit stays over the line.",
+      "Curved yellow turn lines for each turning movement, with paved fillets so the main gear of a code-C A320 keeps its wheel clearance while the cockpit stays over the line. A larger aeroplane would need bigger fillets.",
     icao: "Annex 14 Vol I 3.9.3 (Standard: wheel clearance), 3.9.5 and 3.9.6 (Recommendations: curves and fillets), 5.2.8.6 (Recommendation: centre line on curves); ADM Doc 9157 Part 2 guidance",
     dimensions: [
       { label: "Turn line radius (schematic)", value: "45 m at taxiway junctions; 36 m lead-on/off onto the runway" },
-      { label: "Design aeroplane (approximate)", value: "Code F, OMGWS 14.3 m, cockpit-to-main-gear 33 m" },
-      { label: "Wheel clearance kept", value: "4 m (3.9.3: OMGWS 9–15 m; curves, wheel base ≥ 18 m)" },
+      { label: "Design aeroplane (approximate)", value: "Code C / A320: OMGWS 8.95 m (track 7.59 m plus tyre), cockpit-to-main-gear 16.5 m, wheel base 12.6 m" },
+      { label: "Wheel clearance kept", value: "3 m (3.9.3: OMGWS 6 m up to but not including 9 m; 3 m on straights, and 3 m on curves because the A320 wheel base is under 18 m)" },
       { label: "Apron-corner fillets (schematic)", value: "R 22 m" },
     ],
     notes:
-      "Fillet outlines are computed, not taken from a VABB chart: the main gear is tracked as a pursuit curve behind a cockpit that follows each turn line in both directions, and the pavement is widened wherever the outer main wheel would come within 4 m of the edge. With a code-F aeroplane this widens most of each stub and gives long, thin tapers along the parallels. Real aerodromes often use smaller fillets with judgemental oversteering; all sizes here are schematic/approximate.",
+      "Fillet outlines are computed, not taken from a VABB chart: the main gear is tracked as a pursuit curve behind a cockpit that follows each turn line in both directions, and the pavement is widened wherever the outer main wheel would come within 3 m of the edge. Sized for a code-C A320; a code-E or code-F aeroplane would need bigger fillets. The straight taxiway width stays 23 m (the 3.9.4 Recommendation for OMGWS 9–15 m / code E–F) — a code-C straight width would be 15 m — so the fillets only add what the A320 needs beyond that already-wide strip. All sizes here are schematic/approximate.",
     footprint: { x: -400, z: -140, headingDeg: 0, length: 50, width: 80 },
   },
   {
