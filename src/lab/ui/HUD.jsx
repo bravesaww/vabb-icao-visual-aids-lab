@@ -40,6 +40,10 @@ export function HUD() {
     const setOpDirection = useLab((s) => s.setOpDirection);
     const lookSensitivity = useLab((s) => s.lookSensitivity);
     const setLookSensitivity = useLab((s) => s.setLookSensitivity);
+    const stopBarsClear = useLab((s) => s.stopBarsClear);
+    const toggleStopBarsClear = useLab((s) => s.toggleStopBarsClear);
+    const stopBarHold = useLab((s) => s.stopBarHold);
+    const setStopBarHold = useLab((s) => s.setStopBarHold);
     const selected = selectedId ? FEATURE_BY_ID.get(selectedId) : null;
     useEffect(() => {
         const onKey = (e) => {
@@ -76,6 +80,15 @@ export function HUD() {
             <Power className="size-3.5"/>
             <span className="hidden sm:inline">{lampsOn ? "Lamps ON" : "Lamps OFF"}</span>
           </button>
+          <button type="button" onClick={toggleStopBarsClear} title="Stop-bar clearance (Annex 14 5.3.20.12): ON = red bar lit and lead-on lights beyond it off. OFF = bar off and lead-on lights on. Click a stop bar to pick Pattern A or B as the operational hold." className={cn("flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] font-medium", stopBarsClear ? "border-red-500/70 bg-red-500/20 text-fg" : "border-border bg-panel/90 text-subtle")}>
+            <span className="hidden sm:inline">{stopBarsClear ? "Bars ON" : "Bars OFF"}</span>
+            <span className="sm:hidden">{stopBarsClear ? "Bar" : "Clr"}</span>
+          </button>
+          <div className="flex h-9 items-center rounded-lg border border-border bg-panel/90 p-0.5 text-[12px] backdrop-blur-sm" title="Operational runway-holding position. Only one stop bar is lit at an intersection (5.3.20.2). Runway guard lights flash at Pattern A when A is operational (5.3.23.4).">
+            {[{ id: "A", label: "A" }, { id: "B", label: "B" }].map((o) => (<button key={o.id} type="button" onClick={() => setStopBarHold(o.id)} className={cn("h-8 rounded-md px-2 font-medium", stopBarHold === o.id ? "bg-accent text-accent-fg" : "text-muted hover:text-fg")}>
+                {o.label}
+              </button>))}
+          </div>
           <div className="flex h-9 items-center gap-0.5 rounded-lg border border-border bg-panel/90 p-0.5 text-[12px] backdrop-blur-sm" title="Direction of operation: which runway end's last 600 m of edge lights shows yellow (Annex 14 §5.3.9.7). Auto follows the camera heading.">
             <PlaneLanding className="mx-1 size-3.5 text-muted"/>
             {[
@@ -163,7 +176,7 @@ export function HUD() {
         </div>
         <p className="max-w-xl font-mono text-[10px] leading-relaxed text-subtle sm:text-[11px]">
           {mode === "inspect"
-            ? "Drag orbit · scroll zoom · click a marking, light or sign · L lamps"
+            ? "Drag orbit · scroll zoom · click a marking, light or stop bar · L lamps · Bars toggle clearance"
             : pointerLocked
                 ? "WASD move · Shift sprint · Q/E altitude · Space up · Ctrl down · C crouch · F nearest · L lamps · Esc unlock"
                 : "Tap the airfield to look · WASD or joystick to walk · F inspect nearest · L lamps"}

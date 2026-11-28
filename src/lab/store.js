@@ -34,6 +34,10 @@ export const useLab = create((set) => ({
     viewDirection: "09",
     /** Multiplier on the (already halved) base look / orbit sensitivity. */
     lookSensitivity: loadSensitivity(),
+    /** true = stop bar lit and lead-on lights beyond it off (5.3.20.12). */
+    stopBarsClear: true,
+    /** Which runway-holding position is operational at every intersection (5.3.20.2: only one bar lit). */
+    stopBarHold: "A",
     selectedId: null,
     helpOpen: false,
     catalogOpen: false,
@@ -63,6 +67,9 @@ export const useLab = create((set) => ({
     })),
     setOpDirection: (opDirection) => set({ opDirection }),
     setViewDirection: (viewDirection) => set({ viewDirection }),
+    setStopBarsClear: (stopBarsClear) => set({ stopBarsClear: !!stopBarsClear }),
+    toggleStopBarsClear: () => set((s) => ({ stopBarsClear: !s.stopBarsClear })),
+    setStopBarHold: (stopBarHold) => set({ stopBarHold: stopBarHold === "B" ? "B" : "A" }),
     setLookSensitivity: (v) => {
         const lookSensitivity = Math.min(2, Math.max(0.2, Number(v) || 1));
         try {

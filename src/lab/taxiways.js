@@ -1,4 +1,4 @@
-import { HOLD_DIST_CAT2, LINKS, RWY_0927, TAXI_N, TAXI_S, TAXI_WIDTH, linkTaxi } from "./world";
+import { HOLD_DIST_A, HOLD_DIST_B, HOLD_MARK_DEPTH_M, LINKS, RWY_0927, TAXI_N, TAXI_S, TAXI_WIDTH, linkTaxi } from "./world";
 import { distToMark, runwayObstacleMarks } from "./runwayPaint";
 
 /** Pavement fillet radius at stub/runway and stub/parallel junctions (schematic). */
@@ -7,13 +7,22 @@ export const FILLET_R = 22;
 export const LEAD_R = 36;
 /**
  * Alternate green/yellow taxiway centre-line lights from the runway centre line
- * out to this distance (Annex 14 §5.3.17 — ILS critical/sensitive area or the
- * inner edge of the strip; code-4 strip is 150 m each side of the centre line).
+ * out to this distance (Annex 14 5.3.17.8 — ILS/MLS critical/sensitive area or
+ * the lower edge of the inner transitional surface, whichever is farther).
+ * Set to the schematic Distance Y (Pattern B hold), not the 150 m code-4 strip.
  */
-export const ILS_ALT_ZONE_M = 150;
+export const ILS_ALT_ZONE_M = HOLD_DIST_B;
 
-export function holdZ(link) {
-    return link.side * HOLD_DIST_CAT2;
+export function holdZ(link, which = "A") {
+    return link.side * (which === "B" ? HOLD_DIST_B : HOLD_DIST_A);
+}
+
+/** Along-taxiway range occupied by a Pattern A2 or B2 marking (holding-side face toward the runway). */
+export function holdMarkRange(link, which = "A") {
+    const zHold = holdZ(link, which);
+    const towardRwy = -link.side;
+    const zRwy = zHold + towardRwy * HOLD_MARK_DEPTH_M;
+    return { zHold, z0: Math.min(zHold, zRwy), z1: Math.max(zHold, zRwy) };
 }
 
 export function arcPoints(cx, cz, r, theta0, theta1, stepM = 3) {

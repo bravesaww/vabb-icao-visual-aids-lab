@@ -2,9 +2,9 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLab } from "./store";
-import { ILS_ALT_ZONE_M, apronSpurPoints, connectorPaths } from "./taxiways";
+import { ILS_ALT_ZONE_M, apronSpurPoints, connectorPaths, holdZ } from "./taxiways";
 import { apronFreeEdges, junctionGeometry, stubHalfWidth, taxiwayEdges } from "./junctions";
-import { RWY_0927, TAXI_N, TAXI_S, LINKS, TAXI_WIDTH, APRON_SPURS, holdOf, rwyPos, headingVec, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, linkTaxi } from "./world";
+import { RWY_0927, TAXI_N, TAXI_S, LINKS, TAXI_WIDTH, APRON_SPURS, HOLD_DIST_A, HOLD_DIST_B, holdOf, rwyPos, headingVec, thresholdAlong, landingSign, physicalAlong, aimingInnerSpacing, linkTaxi } from "./world";
 
 const C = {
     white: "#fff8f0",
@@ -162,20 +162,35 @@ function tdzLights(rwy, endName, sysBuckets) {
     }
 }
 
-function stopAndGuard(sysBuckets, wig) {
-    // Stop bar inset lights at 3 m across the full (fillet-widened) taxiway width; elevated
-    // stop-bar lights and runway guard lights just outside the pavement edge.
+/** Stop-bar z: just on the holding / taxiway side of the marking (5.3.20.4). */
+function stopBarZ(link, which) {
+    const away = link.side; // away from the runway
+    return holdZ(link, which) + away * 0.45;
+}
+
+function stopAndGuard(sysBuckets, rgl, clicks) {
+    // Inset stop bars at ≤ 3 m across the taxiway (5.3.20.5); a pair of elevated
+    // lights at each end, not less than 3 m from the taxiway edge (5.3.20.6 / 5.3.20.4).
+    // Runway guard lights, Configuration A, at Pattern A only (5.3.23.5 / 5.3.23.7).
     for (const link of LINKS) {
-        const hold = holdOf(link);
-        const hwW = stubHalfWidth(link, hold.z, -1);
-        const hwE = stubHalfWidth(link, hold.z, 1);
-        for (let x = -Math.floor((hwW - 0.75) / 3) * 3; x <= hwE - 0.75; x += 3) {
-            push(sysBuckets, { x: hold.x + x, y: 0.08, z: hold.z, color: C.red, r: 0.16, sys: "stopBars" });
+        for (const which of ["A", "B"]) {
+            const z = stopBarZ(link, which);
+            const hwW = stubHalfWidth(link, z, -1);
+            const hwE = stubHalfWidth(link, z, 1);
+            for (let x = -Math.floor((hwW - 0.75) / 3) * 3; x <= hwE - 0.75; x += 3) {
+                push(sysBuckets, { x: link.x + x, y: 0.06, z, color: C.red, r: 0.08, sys: "stopBars", fit: "inset", hold: which, linkId: link.id });
+            }
+            push(sysBuckets, { x: link.x - hwW - 3.2, y: 0.45, z, color: C.red, r: 0.06, sys: "stopBars", fit: "elevated", hold: which, linkId: link.id });
+            push(sysBuckets, { x: link.x + hwE + 3.2, y: 0.45, z, color: C.red, r: 0.06, sys: "stopBars", fit: "elevated", hold: which, linkId: link.id });
+            clicks.push({ x: link.x, z, w: hwW + hwE, which, linkId: link.id });
         }
-        push(sysBuckets, { x: hold.x - hwW - 1, y: 0.7, z: hold.z, color: C.red, r: 0.22, sys: "stopBars" });
-        push(sysBuckets, { x: hold.x + hwE + 1, y: 0.7, z: hold.z, color: C.red, r: 0.22, sys: "stopBars" });
-        wig.push({ x: hold.x - hwW - 3, y: 1.2, z: hold.z, color: C.yellow, r: 0.3, sys: "stopBars" });
-        wig.push({ x: hold.x + hwE + 3, y: 1.2, z: hold.z, color: C.yellow, r: 0.3, sys: "stopBars" });
+        // Config A: one unit (a pair of yellow lights) on each side, on the holding
+        // side of the Pattern A marking, facing the approaching aircraft.
+        const zA = holdZ(link, "A") + link.side * 1.4;
+        const hwW = stubHalfWidth(link, zA, -1);
+        const hwE = stubHalfWidth(link, zA, 1);
+        rgl.push({ x: link.x - hwW - 2.2, z: zA, side: link.side, linkId: link.id });
+        rgl.push({ x: link.x + hwE + 2.2, z: zA, side: link.side, linkId: link.id });
     }
 }
 
@@ -319,7 +334,7 @@ function taxiLamps(sysBuckets) {
                     col = C.yellow;
             }
             const nearCl = Math.abs(pt.z) < 4;
-            push(sysBuckets, { x: pt.x, y: 0.06, z: pt.z, color: col, r: 0.08, sys: "taxiway", fit: "inset", ...(nearCl ? { cap: 2.2 } : {}) });
+            push(sysBuckets, { x: pt.x, y: 0.06, z: pt.z, color: col, r: 0.08, sys: "taxiway", fit: "inset", leadOn: true, ...(nearCl ? { cap: 2.2 } : {}) });
         }
     }
     for (const spur of APRON_SPURS) {
@@ -484,7 +499,7 @@ function PapiRow({ rwy, endName, lit }) {
 
 /** Small elevated taxiway-edge fitting: dark stem + blue lens, readable in daylight
  *  without a large glow (lens is MeshBasicMaterial). Night adds a tight halo only. */
-function ElevatedEdgeFittings({ items, lit, lighting }) {
+function ElevatedEdgeFittings({ items, lit, lighting, color = C.blue }) {
     const stemRef = useRef(null);
     const lensRef = useRef(null);
     const glowRef = useRef(null);
@@ -494,19 +509,19 @@ function ElevatedEdgeFittings({ items, lit, lighting }) {
     const glowGeo = useMemo(() => new THREE.SphereGeometry(1, 8, 6), []);
     const stemMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#2a2c2e", roughness: 0.85, metalness: 0.2 }), []);
     const lensMat = useMemo(() => new THREE.MeshBasicMaterial({
-        color: lit ? C.blue : HOUSING,
+        color: lit ? color : HOUSING,
         toneMapped: false,
         fog: !lit,
-    }), [lit]);
+    }), [lit, color]);
     const glowMat = useMemo(() => new THREE.MeshBasicMaterial({
-        color: C.blue,
+        color,
         toneMapped: false,
         transparent: true,
         opacity: lighting === "night" ? 0.32 : lighting === "dusk" ? 0.18 : 0.08,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         fog: false,
-    }), [lighting]);
+    }), [lighting, color]);
     const scratch = useMemo(() => new THREE.Vector3(), []);
     useLayoutEffect(() => {
         const dummy = new THREE.Object3D();
@@ -648,6 +663,75 @@ function ViewDirectionTracker() {
     return null;
 }
 
+
+/** Configuration A runway guard light (5.3.23.7 / 5.3.23.17 / 5.3.23.19):
+ *  a small black unit with two yellow lenses that flash alternately at 45 cpm
+ *  (within the 30–60 cpm range, equal on/off). Faces the approaching aircraft. */
+function GuardUnit({ x, z, side, lit, lighting }) {
+    const left = useRef(null);
+    const right = useRef(null);
+    const glowL = useRef(null);
+    const glowR = useRef(null);
+    useFrame(({ clock }) => {
+        const onL = lit && ((clock.getElapsedTime() * 0.75) % 1 < 0.5);
+        const onR = lit && !onL;
+        if (left.current)
+            left.current.material.color.set(onL ? C.yellow : HOUSING);
+        if (right.current)
+            right.current.material.color.set(onR ? C.yellow : HOUSING);
+        if (glowL.current)
+            glowL.current.visible = onL && lighting !== "day";
+        if (glowR.current)
+            glowR.current.visible = onR && lighting !== "day";
+    });
+    const face = side < 0 ? Math.PI : 0;
+    return (<group position={[x, 0, z]} rotation={[0, face, 0]}>
+      <mesh position={[0, 0.32, 0]}>
+        <boxGeometry args={[0.12, 0.55, 0.12]}/>
+        <meshStandardMaterial color="#2a2c2e" roughness={0.8}/>
+      </mesh>
+      <mesh position={[0, 0.55, 0]}>
+        <boxGeometry args={[0.42, 0.28, 0.16]}/>
+        <meshStandardMaterial color="#1a1c1e" roughness={0.7} metalness={0.25}/>
+      </mesh>
+      <mesh ref={left} position={[-0.1, 0.55, 0.09]}>
+        <sphereGeometry args={[0.055, 10, 8]}/>
+        <meshBasicMaterial color={HOUSING} toneMapped={false}/>
+      </mesh>
+      <mesh ref={right} position={[0.1, 0.55, 0.09]}>
+        <sphereGeometry args={[0.055, 10, 8]}/>
+        <meshBasicMaterial color={HOUSING} toneMapped={false}/>
+      </mesh>
+      <mesh ref={glowL} position={[-0.1, 0.55, 0.09]} visible={false}>
+        <sphereGeometry args={[0.16, 8, 6]}/>
+        <meshBasicMaterial color={C.yellow} toneMapped={false} transparent opacity={0.35} depthWrite={false}/>
+      </mesh>
+      <mesh ref={glowR} position={[0.1, 0.55, 0.09]} visible={false}>
+        <sphereGeometry args={[0.16, 8, 6]}/>
+        <meshBasicMaterial color={C.yellow} toneMapped={false} transparent opacity={0.35} depthWrite={false}/>
+      </mesh>
+    </group>);
+}
+
+function StopBarClicks({ items }) {
+    const onClick = (which) => (e) => {
+        e.stopPropagation();
+        const st = useLab.getState();
+        if (st.stopBarHold === which)
+            st.toggleStopBarsClear();
+        else {
+            st.setStopBarHold(which);
+            st.setStopBarsClear(true);
+        }
+    };
+    return (<group>
+      {items.map((it, i) => (<mesh key={`${it.linkId}-${it.which}-${i}`} position={[it.x, 0.12, it.z]} onClick={onClick(it.which)}>
+          <boxGeometry args={[it.w, 0.2, 1.1]}/>
+          <meshBasicMaterial transparent opacity={0} depthWrite={false}/>
+        </mesh>))}
+    </group>);
+}
+
 export function Lights() {
     const on = useLab((s) => s.layers.lights);
     const lighting = useLab((s) => s.lighting);
@@ -655,13 +739,16 @@ export function Lights() {
     const lampSystems = useLab((s) => s.lampSystems);
     const opDirection = useLab((s) => s.opDirection);
     const viewDirection = useLab((s) => s.viewDirection);
+    const stopBarsClear = useLab((s) => s.stopBarsClear);
+    const stopBarHold = useLab((s) => s.stopBarHold);
     const dir = opDirection === "auto" ? viewDirection : opDirection;
     const litTaxi = lampsOn && lampSystems.taxiway !== false;
     const built = useMemo(() => {
         const sys = {};
         const rabbit = [];
         const reil = [];
-        const wig = [];
+        const rgl = [];
+        const clicks = [];
         edgeLamps(RWY_0927, sys, dir);
         clLamps(RWY_0927, sys, dir);
         for (const name of Object.keys(RWY_0927.ends)) {
@@ -671,8 +758,8 @@ export function Lights() {
             addReil(RWY_0927, name, reil);
         }
         taxiLamps(sys);
-        stopAndGuard(sys, wig);
-        return { sys, rabbit, reil, wig };
+        stopAndGuard(sys, rgl, clicks);
+        return { sys, rabbit, reil, rgl, clicks };
     }, [dir]);
     if (!on)
         return null;
@@ -691,11 +778,35 @@ export function Lights() {
       {renderGroup(built.sys.tdz, "tdz")}
       {sysOn("taxiway") ? (<>
         <ElevatedEdgeFittings items={built.sys.taxiway?.blue ?? []} lit={litTaxi} lighting={lighting}/>
-        {COLOR_KEYS.filter((k) => k !== "blue").map((k) => (
-          <InsetTaxiLamps key={`taxi-${k}-${built.sys.taxiway?.[k]?.length ?? 0}`} items={(built.sys.taxiway?.[k] ?? []).filter((it) => it.fit !== "elevated")} color={C[k]} lit={litTaxi} lighting={lighting}/>
-        ))}
+        {COLOR_KEYS.filter((k) => k !== "blue").map((k) => {
+            const all = (built.sys.taxiway?.[k] ?? []).filter((it) => it.fit !== "elevated");
+            const holdD = stopBarHold === "B" ? HOLD_DIST_B : HOLD_DIST_A;
+            // 5.3.20.12 c/d: when the stop bar is on, extinguish CL lights beyond it
+            // (toward and onto the runway) for at least 90 m; the lead-on path is
+            // fully extinguished as a teaching stand-in for that rule.
+            const off = (it) => stopBarsClear && it.leadOn && Math.abs(it.z) < holdD - 0.4;
+            const litItems = all.filter((it) => !off(it));
+            const darkItems = all.filter((it) => off(it));
+            return (<group key={`taxi-${k}`}>
+            <InsetTaxiLamps items={litItems} color={C[k]} lit={litTaxi} lighting={lighting}/>
+            <InsetTaxiLamps items={darkItems} color={C[k]} lit={false} lighting={lighting}/>
+          </group>);
+        })}
       </>) : null}
-      {renderGroup(built.sys.stopBars, "stopBars", <InstancedLamps items={built.wig} color={C.yellow} lit={sysOn("stopBars")} lighting={lighting} pulse={(t, i) => (Math.sin(t * Math.PI * 3 + i * Math.PI) > 0 ? 1.25 : 0.22)}/>)}
+      {sysOn("stopBars") ? (<>
+        {["A", "B"].map((which) => {
+            const barLit = lampsOn && stopBarsClear && stopBarHold === which;
+            const items = built.sys.stopBars?.red ?? [];
+            const inset = items.filter((it) => it.hold === which && it.fit !== "elevated");
+            const elev = items.filter((it) => it.hold === which && it.fit === "elevated");
+            return (<group key={`bar-${which}`}>
+            <InsetTaxiLamps items={inset} color={C.red} lit={barLit} lighting={lighting}/>
+            <ElevatedEdgeFittings items={elev} color={C.red} lit={barLit} lighting={lighting}/>
+          </group>);
+        })}
+        {built.rgl.map((it) => (<GuardUnit key={`rgl-${it.linkId}-${it.x}`} {...it} lit={lampsOn && stopBarHold === "A"} lighting={lighting}/>))}
+        <StopBarClicks items={built.clicks}/>
+      </>) : null}
       {renderGroup(built.sys.approach, "approach", <>
         <InstancedLamps items={built.rabbit} color={C.white} lit={sysOn("approach")} lighting={lighting} pulse={(t, i) => {
             const n = built.rabbit.length || 1;

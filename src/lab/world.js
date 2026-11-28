@@ -117,12 +117,22 @@ export const WALK_SPEED = {
 export const TAXI_WIDTH = 23;
 /** Half the physical runway length — parallels run the full paved length and end at the end connectors. */
 export const RWY_HALF = RWY_0927.length / 2;
-/** Parallel taxiways sit outside the code-4 strip (150 m) so CAT II holds at 90 m fall on the stubs. */
+/** Parallel taxiways sit outside the code-4 strip (150 m) so both holds fall on the stubs. */
 export const TAXI_N = { z: -160, x0: -RWY_HALF, x1: RWY_HALF, width: TAXI_WIDTH };
 export const TAXI_S = { z: 160, x0: -RWY_HALF, x1: RWY_HALF, width: TAXI_WIDTH };
 
-/** Table 3-2, code 4, CAT II/III — minimum distance from runway centre line to the holding position. */
-export const HOLD_DIST_CAT2 = 90;
+/** Figure 5-8 Pattern A2 / B2 depth (4×0.3 m lines + 3×0.3 m spaces, or 2×0.3 + 1.5 m space). */
+export const HOLD_MARK_DEPTH_M = 2.10;
+
+/** Table 3-2, code 4, precision CAT I — also the minimum for CAT II/III. Figure 5-32 Distance X.
+ *  Pattern A is at this distance (5.2.10.3: the hold closer to the runway is Pattern A). */
+export const HOLD_DIST_A = 90;
+/** Figure 5-32 Distance Y — edge of the ILS/MLS critical/sensitive area (3.12.6 / Table 3-2 note b).
+ *  Schematic/approximate: VABB ILS sensitive-area boundary is not taken from the current eAIP.
+ *  120 m keeps Pattern B on the constant-width stub, short of the code-C fillets. */
+export const HOLD_DIST_B = 120;
+/** @deprecated use HOLD_DIST_A or HOLD_DIST_B */
+export const HOLD_DIST_CAT2 = HOLD_DIST_A;
 
 /** End-connector centreline so the outer face is flush with the runway / parallel end. */
 const END_WEST_X = -RWY_HALF + TAXI_WIDTH / 2;
@@ -151,25 +161,45 @@ export function linkTaxi(link) {
   return link.side < 0 ? TAXI_N : TAXI_S;
 }
 
-export function holdOf(link) {
-  return { id: link.id, x: link.x, z: link.side * HOLD_DIST_CAT2, distFromRwyCl: HOLD_DIST_CAT2, side: link.side };
+export function holdDist(which = "A") {
+  return which === "B" ? HOLD_DIST_B : HOLD_DIST_A;
+}
+
+export function holdOf(link, which = "A") {
+  const dist = holdDist(which);
+  return { id: link.id, x: link.x, z: link.side * dist, distFromRwyCl: dist, side: link.side, pattern: which };
 }
 
 export function findLink(id) {
   return LINKS.find((l) => l.id === id);
 }
 
+/** 5.4.2.14: runway designations properly oriented to the viewing position of the sign.
+ *  The pilot faces the runway; the left-hand designator is the runway to their left.
+ *  Near a runway extremity the sign may show that extremity only. */
+export function runwayDesignationLegend(link) {
+  if (link.id === "N09" || link.id === "S09")
+    return "09";
+  if (link.id === "N27" || link.id === "S27")
+    return "27";
+  // North links: facing south, left is east (27), right is west (09).
+  return link.side < 0 ? "27-09" : "09-27";
+}
+
+/** 5.4.2.15: runway designator followed by CAT II. */
+export function catHoldLegend(link) {
+  return `${runwayDesignationLegend(link)} CAT II`;
+}
+
+/** @deprecated use catHoldLegend / runwayDesignationLegend */
 export function mandSignLegend(link) {
-  if (link.id === "N09" || link.id === "S09" || link.id === "N1" || link.id === "S1")
-    return "09 CAT II";
-  if (link.id === "N27" || link.id === "S27" || link.id === "N4" || link.id === "S3")
-    return "27 CAT II";
-  return "09-27 CAT II";
+  return catHoldLegend(link);
 }
 
 export const TAXI_N1 = { x: -1280, z0: TAXI_N.z, z1: 0, width: TAXI_WIDTH };
-export const HOLD_N1 = holdOf(findLink("N1"));
-export const HOLD_CAT2 = holdOf(findLink("N4"));
+export const HOLD_N1 = holdOf(findLink("N1"), "A");
+export const HOLD_N1_B = holdOf(findLink("N1"), "B");
+export const HOLD_CAT2 = holdOf(findLink("N4"), "B");
 
 /**
  * South (T2) apron. Depth is chosen so the pad overlaps taxiway S — no grass gap.

@@ -2,7 +2,9 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLab } from "./store";
-import { TAXI_N, TAXI_S, TAXI_N1, LINKS, holdOf, mandSignLegend, RWY_0927, thresholdAlong } from "./world";
+import { TAXI_N, TAXI_S, TAXI_N1, LINKS, holdOf, runwayDesignationLegend, catHoldLegend, RWY_0927, thresholdAlong } from "./world";
+import { holdZ } from "./taxiways";
+import { stubHalfWidth, TAXI_SHOULDER_M } from "./junctions";
 function canvasTexture(draw, w = 512, h = 256) {
     const c = document.createElement("canvas");
     c.width = w;
@@ -43,32 +45,78 @@ function SignPost({ position, rotationY = 0, children, }) {
       <group position={[0, 2.35, 0]}>{children}</group>
     </group>);
 }
+
+/** 5.4.2.6 / 5.4.2.8: runway designation (and optional location sign outboard) on each side,
+ *  facing the approach to the runway. 5.4.2.9 / 5.4.2.15: CAT II sign at Pattern B. */
+function HoldSigns({ link }) {
+    const face = link.side < 0 ? Math.PI : 0;
+    const rwy = runwayDesignationLegend(link);
+    const cat = catHoldLegend(link);
+    const locW = Math.max(2.0, 0.55 * link.id.length + 1.4);
+    const rwyW = rwy.length > 5 ? 3.6 : rwy.length > 2 ? 3.2 : 2.4;
+    const catW = cat.length > 12 ? 5.6 : cat.length > 9 ? 5.0 : 4.4;
+    const sides = [-1, 1];
+    return (<group>
+      {sides.map((sx) => {
+            const zA = holdZ(link, "A");
+            const zB = holdZ(link, "B");
+            const xEdgeA = stubHalfWidth(link, zA, sx) + TAXI_SHOULDER_M + 2.2;
+            const xEdgeB = stubHalfWidth(link, zB, sx) + TAXI_SHOULDER_M + 2.2;
+            // Location sign is outboard (farthest from the taxiway). Inboard face of
+            // the designation sits just outside the shoulder.
+            const inboard = link.x + sx * xEdgeA;
+            // designation inboard, location outboard
+            const desCentre = inboard + sx * (rwyW / 2);
+            const locCentre = inboard + sx * (rwyW + 0.12 + locW / 2);
+            const catCentre = link.x + sx * (xEdgeB + catW / 2);
+            return (<group key={sx}>
+          <SignPost position={[desCentre, 0, zA]} rotationY={face}>
+            <mesh>
+              <boxGeometry args={[rwyW + 0.2, 1.25, 0.12]}/>
+              <meshStandardMaterial color="#8b1e1a"/>
+            </mesh>
+            <SignFace text={rwy} bg="#9b241c" fg="#f4f1ea" width={rwyW}/>
+          </SignPost>
+          <SignPost position={[locCentre, 0, zA]} rotationY={face}>
+            <mesh>
+              <boxGeometry args={[locW + 0.2, 1.25, 0.12]}/>
+              <meshStandardMaterial color="#111"/>
+            </mesh>
+            <SignFace text={link.id} bg="#111111" fg="#e0b43a" width={locW}/>
+          </SignPost>
+          <SignPost position={[catCentre, 0, zB]} rotationY={face}>
+            <mesh>
+              <boxGeometry args={[catW + 0.2, 1.25, 0.12]}/>
+              <meshStandardMaterial color="#8b1e1a"/>
+            </mesh>
+            <SignFace text={cat} bg="#9b241c" fg="#f4f1ea" width={catW}/>
+          </SignPost>
+          <GableMarkers x={link.x + sx * (stubHalfWidth(link, zA, sx) + 0.25)} z={zA} side={link.side}/>
+        </group>);
+        })}
+    </group>);
+}
+
+/** Yellow vertical boards at the Pattern A taxiway edges, as in the reference
+ *  stop-bar diagram ("gable markers"). Not specified in Annex 14 (5.5.5 taxiway
+ *  edge markers are blue and apply to code 1 or 2 taxiways without edge lights).
+ *  Shown as a teaching extra from the reference; state practice. */
+function GableMarkers({ x, z, side }) {
+    const along = [ -1.6, -0.55, 0.55, 1.6 ];
+    return (<group>
+      {along.map((dz, i) => (<mesh key={i} position={[x, 0.55, z + side * 0.15 + dz]}>
+        <boxGeometry args={[0.08, 1.1, 0.32]}/>
+        <meshStandardMaterial color="#e0b43a" roughness={0.55} metalness={0.1}/>
+      </mesh>))}
+    </group>);
+}
+
 export function Signs() {
     const on = useLab((s) => s.layers.signs);
     if (!on)
         return null;
     return (<group>
-      {LINKS.map((link) => {
-            const hold = holdOf(link);
-            const legend = mandSignLegend(link);
-            const mandW = legend.length > 10 ? 5.4 : 4.6;
-            return (<group key={link.id}>
-          <SignPost position={[hold.x - 26, 0, hold.z]}>
-            <mesh>
-              <boxGeometry args={[mandW + 0.2, 1.25, 0.12]}/>
-              <meshStandardMaterial color="#8b1e1a"/>
-            </mesh>
-            <SignFace text={legend} bg="#9b241c" fg="#f4f1ea" width={mandW}/>
-          </SignPost>
-          <SignPost position={[hold.x + 26, 0, hold.z]}>
-            <mesh>
-              <boxGeometry args={[2.6, 1.25, 0.12]}/>
-              <meshStandardMaterial color="#111"/>
-            </mesh>
-            <SignFace text={link.id} bg="#111111" fg="#e0b43a" width={2.4}/>
-          </SignPost>
-        </group>);
-        })}
+      {LINKS.map((link) => <HoldSigns key={link.id} link={link}/>)}
       <SignPost position={[620, 0, TAXI_S.z - 42]} rotationY={Math.PI / 2}>
         <mesh>
           <boxGeometry args={[3.8, 1.25, 0.12]}/>

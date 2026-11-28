@@ -1,9 +1,8 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { RWY_0927, TAXI_N, TAXI_S, TAXI_N1, TAXI_WIDTH, LINKS, APRON_SPURS, rwyPos, rwyYaw } from "./world";
-import { apronSpurPoints, connectorPaths, holdZ, sideStripeGaps } from "./taxiways";
+import { apronSpurPoints, connectorPaths, holdZ, holdMarkRange, sideStripeGaps } from "./taxiways";
 import { junctionGeometry, stubHalfWidth, taxiwayEdges } from "./junctions";
-import { digitSegs, DIGIT_W } from "./digits";
 import { centreline, zebra, designation, aiming, tdz, sideStripes, arrows } from "./runwayPaint";
 import { useLab } from "./store";
 function paintPolyline(out, pts, width = 0.3, y) {
@@ -25,25 +24,36 @@ function paintPolyline(out, pts, width = 0.3, y) {
         });
     }
 }
-/** Pattern A across the full (fillet-widened) stub width at the holding position. */
+/** Pattern A2 / B2 across the full (fillet-widened) stub width at the holding position. */
 function holdSpan(link, z) {
     const w = stubHalfWidth(link, z, -1);
     const e = stubHalfWidth(link, z, 1);
     return { x0: link.x - w + 0.5, x1: link.x + e - 0.5 };
 }
+/**
+ * Pattern A2 (Annex 14 Vol I 5.2.10.6 / Figure 5-8, as of 26 Nov 2026):
+ * four 0.3 m lines and three 0.3 m spaces (2.10 m). Two solid lines on the
+ * holding side, two dashed lines (0.9 m dash / 0.9 m gap) on the runway side.
+ */
 function holdPatternA(out, link) {
-    const z = holdZ(link);
+    const zHold = holdZ(link, "A");
     const towardRwy = -link.side;
-    const { x0, x1 } = holdSpan(link, z);
+    const { x0, x1 } = holdSpan(link, zHold);
     const xc = (x0 + x1) / 2;
     const w = x1 - x0;
-    out.push({ x: xc, z: z + towardRwy * 1.35, w, d: 0.9, ry: 0 });
-    out.push({ x: xc, z: z + towardRwy * 0.45, w, d: 0.9, ry: 0 });
-    const n = Math.floor(w / 2.6);
-    for (let i = 0; i < n; i++) {
-        const x = x0 + 0.7 + i * 2.6 + (w - 1.4 - (n - 1) * 2.6) / 2;
-        out.push({ x, z: z - towardRwy * 2.25, w: 1.4, d: 0.9, ry: 0 });
-        out.push({ x, z: z - towardRwy * 4.05, w: 1.4, d: 0.9, ry: 0 });
+    const centres = [0.15, 0.75, 1.35, 1.95];
+    out.push({ x: xc, z: zHold + towardRwy * centres[0], w, d: 0.3, ry: 0 });
+    out.push({ x: xc, z: zHold + towardRwy * centres[1], w, d: 0.3, ry: 0 });
+    const dash = 0.9;
+    const gap = 0.9;
+    const pitch = dash + gap;
+    const n = Math.max(1, Math.floor((w + gap) / pitch));
+    const span = n * dash + (n - 1) * gap;
+    const xStart = xc - span / 2 + dash / 2;
+    for (const c of [centres[2], centres[3]]) {
+        for (let i = 0; i < n; i++) {
+            out.push({ x: xStart + i * pitch, z: zHold + towardRwy * c, w: dash, d: 0.3, ry: 0 });
+        }
     }
 }
 function holdAllPatternA(out) {
@@ -66,28 +76,39 @@ function taxiCL(out) {
     for (const link of LINKS) {
         const paths = connectorPaths(link);
         // Annex 14 5.2.8.10: the taxiway centre line is continuous except where it
-        // intersects a runway-holding position marking.
-        const hz = holdZ(link);
-        const towardRwy = -link.side;
-        const zA = hz + towardRwy * 1.9;
-        const zB = hz - towardRwy * 4.6;
-        const z0 = Math.min(zA, zB);
-        const z1 = Math.max(zA, zB);
-        const parts = [[], []];
-        for (const pt of paths.straight) {
-            if (pt.z <= z0)
-                parts[0].push(pt);
-            else if (pt.z >= z1)
-                parts[1].push(pt);
-        }
-        // close the cut with points exactly on the gap edges
+        // intersects a runway-holding position marking. Interrupt at Pattern A and B.
+        const gaps = ["A", "B"].map((which) => {
+            const r = holdMarkRange(link, which);
+            return { z0: r.z0 - 0.15, z1: r.z1 + 0.15 };
+        }).sort((a, b) => a.z0 - b.z0);
         const x = link.x;
-        if (parts[0].length)
-            parts[0].push({ x, z: z0 });
-        if (parts[1].length)
-            parts[1].unshift({ x, z: z1 });
-        paintPolyline(out, parts[0], w);
-        paintPolyline(out, parts[1], w);
+        const parts = [];
+        let bucket = [];
+        for (const pt of paths.straight) {
+            if (gaps.some((g) => pt.z > g.z0 && pt.z < g.z1)) {
+                if (bucket.length)
+                    parts.push(bucket);
+                bucket = [];
+            }
+            else {
+                bucket.push(pt);
+            }
+        }
+        if (bucket.length)
+            parts.push(bucket);
+        // Close each piece on the gap edges so the cut is exact.
+        for (const piece of parts) {
+            const lo = Math.min(piece[0].z, piece[piece.length - 1].z);
+            const hi = Math.max(piece[0].z, piece[piece.length - 1].z);
+            for (const g of gaps) {
+                if (lo <= g.z0 && hi >= g.z0 - 0.01 && !piece.some((q) => Math.abs(q.z - g.z0) < 1e-4))
+                    piece.push({ x, z: g.z0 });
+                if (lo <= g.z1 && hi >= g.z1 - 0.01 && !piece.some((q) => Math.abs(q.z - g.z1) < 1e-4))
+                    piece.push({ x, z: g.z1 });
+            }
+            piece.sort((a, b) => a.z - b.z);
+            paintPolyline(out, piece, w);
+        }
         // Lead lines sit on runway pavement. They are pre-clipped (taxiways.js) so they never
         // touch white runway paint; they stay LEAD_OFFSET_M clear of the runway CL.
         for (const piece of [...paths.east, ...paths.west])
@@ -103,15 +124,30 @@ function taxiCL(out) {
     }
 }
 
+/**
+ * Pattern B2 (5.2.10.6 / Figure 5-8): two 0.3 m lines with a 1.5 m space (2.10 m),
+ * joined by 0.3 m rungs. Rung pitch 0.9 m / 0.9 m follows the figure labels
+ * (schematic/approximate — the Annex does not state a pitch in the text).
+ */
 function holdPatternB(out, link) {
-    const z = holdZ(link) - (-link.side) * 6;
-    const { x0, x1 } = holdSpan(link, z);
+    const zHold = holdZ(link, "B");
+    const towardRwy = -link.side;
+    const { x0, x1 } = holdSpan(link, zHold);
     const xc = (x0 + x1) / 2;
     const w = x1 - x0;
-    out.push({ x: xc, z: z - 0.45, w, d: 0.3, ry: 0 });
-    out.push({ x: xc, z: z + 0.45, w, d: 0.3, ry: 0 });
-    for (let x = x0 + 0.5; x <= x1 - 0.5; x += 1.4) {
-        out.push({ x, z, w: 0.3, d: 1.2, ry: 0 });
+    const z1 = zHold + towardRwy * 0.15;
+    const z2 = zHold + towardRwy * 1.95;
+    const zMid = (z1 + z2) / 2;
+    out.push({ x: xc, z: z1, w, d: 0.3, ry: 0 });
+    out.push({ x: xc, z: z2, w, d: 0.3, ry: 0 });
+    const rung = 0.9;
+    const gap = 0.9;
+    const pitch = rung + gap;
+    const n = Math.max(1, Math.floor((w + gap) / pitch));
+    const span = n * rung + (n - 1) * gap;
+    const xStart = xc - span / 2 + rung / 2;
+    for (let i = 0; i < n; i++) {
+        out.push({ x: xStart + i * pitch, z: zMid, w: rung, d: 1.5, ry: 0 });
     }
 }
 function holdAllPatternB(out) {
@@ -120,9 +156,11 @@ function holdAllPatternB(out) {
 }
 /**
  * Enhanced taxiway centre line (Annex 14 Vol I 5.2.8.9): two dashed lines either side of
- * the centre line from Pattern A out to 47 m. Where a junction turn curve leaves the stub
- * centre line inside that distance, dashes within 1.5 m of the curve are dropped (5.2.8.9 c
- * applied by analogy) and at least three dashes continue beyond it.
+ * the centre line, starting 0.9 m from Pattern A and extending up to 47 m away from the
+ * runway. Pattern B lies within that 47 m, so 5.2.8.9 b applies: interrupt 0.9 m before
+ * and after Pattern B, then continue for at least three dashes or 47 m from the start,
+ * whichever is greater. Dashes within 1.5 m of a junction turn line are dropped (5.2.8.9 c)
+ * and at least three dashes continue beyond it.
  */
 function enhancedCL(out) {
     const DASH = 3;
@@ -130,26 +168,40 @@ function enhancedCL(out) {
     const OFF = 0.3;
     const turns = junctionGeometry().turns;
     for (const link of LINKS) {
-        const hz = holdZ(link);
+        const zA = holdZ(link, "A");
+        const bRange = holdMarkRange(link, "B");
         const curves = turns.filter((t) => t.junction === link.id).map((t) => t.pts);
+        const away = link.side; // sign of increasing |z|, away from the runway
         for (const sx of [-1, 1]) {
             const x = link.x + sx * OFF;
-            const near = (z) => curves.some((pts) => pts.some((p) => Math.abs(p.x - x) < 1.65 && Math.abs(p.z - z) < DASH / 2 + 1.5));
-            let d = DASH / 2;
-            let afterGap = 0;
-            let gapSeen = false;
-            while (d < 47 + 3 * (DASH + GAP)) {
-                const z = hz + link.side * d;
-                if (d > 47 && (!gapSeen || afterGap >= 3))
+            const nearCurve = (z) => curves.some((pts) => pts.some((p) => Math.abs(p.x - x) < 1.65 && Math.abs(p.z - z) < DASH / 2 + 1.5));
+            const inB = (z) => z > bRange.z0 - 0.9 && z < bRange.z1 + 0.9;
+            let d = 0.9 + DASH / 2;
+            let afterCurve = 0;
+            let curveSeen = false;
+            let afterB = 0;
+            let bSeen = false;
+            while (d < 47 + 4 * (DASH + GAP)) {
+                const z = zA + away * d;
+                const pastB = bSeen && afterB >= 3;
+                if (d > 47 && (!curveSeen || afterCurve >= 3) && pastB)
                     break;
-                if (near(z)) {
-                    gapSeen = true;
-                    afterGap = 0;
+                if (nearCurve(z) || inB(z)) {
+                    if (nearCurve(z)) {
+                        curveSeen = true;
+                        afterCurve = 0;
+                    }
+                    if (inB(z)) {
+                        bSeen = true;
+                        afterB = 0;
+                    }
                 }
                 else {
                     out.push({ x, z, w: 0.15, d: DASH, ry: 0 });
-                    if (gapSeen)
-                        afterGap++;
+                    if (curveSeen)
+                        afterCurve++;
+                    if (bSeen)
+                        afterB++;
                 }
                 d += DASH + GAP;
             }
@@ -226,36 +278,8 @@ function infoPaint(out) {
     out.push({ x, z: z + 1.6, w: 0.7, d: 4.5, ry: Math.PI / 2 });
     out.push({ x, z, w: 0.7, d: Math.hypot(4.5, 3.2), ry: Math.atan2(-4.5, 3.2) });
 }
-function mandatoryPaint(outRed, outWhite) {
-    outRed.push({ x: TAXI_N1.x, z: -82, w: 16, d: 6, ry: 0, y: 0.025 });
-    const scale = 0.32;
-    const chars = ["0", "9", "-", "2", "7"];
-    // hyphen as a simple bar
-    let cursor = -6;
-    for (const ch of chars) {
-        if (ch === "-") {
-            outWhite.push({ x: TAXI_N1.x + cursor + 0.8, z: -82, w: 1.4, d: 0.35, ry: 0, y: 0.045 });
-            cursor += 2.2;
-            continue;
-        }
-        for (const s of digitSegs(ch)) {
-            outWhite.push({
-                x: TAXI_N1.x + cursor + s.across * scale,
-                z: -82 + (s.along - 4.5) * scale,
-                w: s.w * scale,
-                d: s.d * scale,
-                ry: 0,
-                y: 0.045,
-            });
-        }
-        cursor += DIGIT_W * scale + 0.45;
-    }
-}
-
 function buildWhite() {
     const m = [];
-    const redDummy = [];
-    mandatoryPaint(redDummy, m);
     for (const rwy of [RWY_0927]) {
         centreline(rwy, m);
         sideStripes(rwy, m, sideStripeGaps());
@@ -282,10 +306,7 @@ function buildYellow() {
     return m;
 }
 function buildRed() {
-    const m = [];
-    const whiteDummy = [];
-    mandatoryPaint(m, whiteDummy);
-    return m;
+    return [];
 }
 function InstancedMarks({ items, color }) {
     const ref = useRef(null);

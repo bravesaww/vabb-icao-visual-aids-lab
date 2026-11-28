@@ -221,6 +221,12 @@ export function InspectRig() {
             setCatalogOpen(on) {
                 useLab.getState().setCatalogOpen(!!on);
             },
+            setStopBarsClear(on) {
+                useLab.getState().setStopBarsClear(!!on);
+            },
+            setStopBarHold(which) {
+                useLab.getState().setStopBarHold(which);
+            },
         };
         return () => {
             delete window.__labShot;
