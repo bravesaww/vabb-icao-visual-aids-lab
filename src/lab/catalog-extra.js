@@ -139,7 +139,7 @@ export const EXTRA_FEATURES = [
       { label: "Position (7.2.2)", value: "Along the edge of the load-bearing pavement; the outer edge of the marking approximately on that edge" },
       { label: "Taxiway load-bearing width (lab)", value: "23 m (3.9.4 for OMGWS 9–15 m / code E–F)" },
     ],
-    notes: "The lines follow every fillet and stop at junction mouths and apron joins (no side stripe painted across pavement). Transverse yellow stripes on the shoulder at each runway/taxiway intersection are additional guidance in the 7.2.3 Note (ADM Doc 9157 Part 4) and in State practice such as FAA AC 150/5340-1 and CAP 637 — their spacing is schematic, not an Annex figure.",
+    notes: "The lines follow every fillet and stop at junction mouths and apron joins (no side stripe painted across pavement). The 7.2.3 Note points to ADM Doc 9157 Part 4 for optional transverse stripes at an intersection; this lab does not paint those (they are not required by the Annex).",
     footprint: { x: 0, z: TAXI_N.z, headingDeg: 90, length: TAXI_N.x1 - TAXI_N.x0, width: 23 },
   },
   {

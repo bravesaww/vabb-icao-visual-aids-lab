@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { RWY_0927, TAXI_N, TAXI_S, TAXI_N1, TAXI_WIDTH, LINKS, APRON_SPURS, rwyPos, rwyYaw } from "./world";
 import { apronSpurPoints, connectorPaths, holdZ, sideStripeGaps } from "./taxiways";
-import { RWY_SHOULDER_M, TAXI_SHOULDER_M, junctionGeometry, stubHalfWidth, taxiwayEdges } from "./junctions";
+import { junctionGeometry, stubHalfWidth, taxiwayEdges } from "./junctions";
 import { digitSegs, DIGIT_W } from "./digits";
 import { centreline, zebra, designation, aiming, tdz, sideStripes, arrows } from "./runwayPaint";
 import { useLab } from "./store";
@@ -166,7 +166,7 @@ function blastChevrons(out) {
         out.push({ x: p.x, z: p.z, w: 1.2, d: 12, ry: yaw - 0.7 });
     }
 }
-/** Double yellow taxiway edge lines that follow the junction fillets (State practice). */
+/** Double yellow taxi side stripe (Annex 14 Vol I 7.2.3) that follows the junction fillets. */
 function offsetPolyline(pts, normals, d) {
     return pts.map((p, i) => ({ x: p.x + normals[i].x * d, z: p.z + normals[i].z * d }));
 }
@@ -269,36 +269,6 @@ function buildWhite() {
     }
     return m;
 }
-/**
- * Transverse yellow stripes on the non-load-bearing shoulder at each runway/taxiway
- * intersection. Annex 14 7.2.3 Note points to ADM Doc 9157 Part 4 for additional
- * transverse stripes at an intersection; the same device appears in State practice
- * (FAA AC 150/5340-1, CAP 637). Spacing and length are schematic/approximate —
- * this is not an Annex dimension.
- */
-function shoulderStripes(out) {
-    const half = RWY_0927.width / 2;
-    for (const link of LINKS) {
-        const zEdge = link.side * half;
-        const w = stubHalfWidth(link, zEdge, -1);
-        const e = stubHalfWidth(link, zEdge, 1);
-        for (const sx of [-1, 1]) {
-            const x0 = sx < 0 ? link.x - w - 0.9 : link.x + e + 0.9;
-            for (let k = 0; k < 6; k++) {
-                const x = x0 + sx * (0.45 + k * 1.8);
-                const z = zEdge + link.side * (RWY_SHOULDER_M / 2);
-                out.push({ x, z, w: 0.9, d: RWY_SHOULDER_M - 0.5, ry: 0, y: 0.025 });
-            }
-            const xSh = link.x + sx * (TAXI_WIDTH / 2 + TAXI_SHOULDER_M / 2);
-            for (let k = 0; k < 4; k++) {
-                const z = zEdge + link.side * (1.2 + 0.45 + k * 1.8);
-                if (Math.abs(z) <= half + 0.2)
-                    continue;
-                out.push({ x: xSh, z, w: TAXI_SHOULDER_M - 0.5, d: 0.9, ry: 0, y: 0.025 });
-            }
-        }
-    }
-}
 function buildYellow() {
     const m = [];
     holdAllPatternA(m);
@@ -309,7 +279,6 @@ function buildYellow() {
     taxiEdge(m);
     intermediateHold(m);
     infoPaint(m);
-    shoulderStripes(m);
     return m;
 }
 function buildRed() {
